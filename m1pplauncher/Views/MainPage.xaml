@@ -40,8 +40,8 @@
         <RowDefinition Height="auto" />
         <RowDefinition Height="auto" />
       </Grid.RowDefinitions>
-      <ProgressRing HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Top" Width="14" Height="14" Visibility="{x:Bind ViewModel.IsCheckingForUpdate,Mode=OneWay,Converter={StaticResource BoolToVisibility}}" />
-      <TextBlock Margin="4,0,0,0" Visibility="{x:Bind ViewModel.IsCheckingForUpdate,Mode=OneWay,Converter={StaticResource BoolToVisibility}}">Checking for updates...</TextBlock>
+      <ProgressRing HorizontalAlignment="Left" Margin="4,2,0,0" VerticalAlignment="Top" Width="14" Height="14" Visibility="{x:Bind ViewModel.IsCheckingForUpdate,Mode=OneWay,Converter={StaticResource BoolToVisibility}}" />
+      <TextBlock Margin="24,0,0,0" Visibility="{x:Bind ViewModel.IsCheckingForUpdate,Mode=OneWay,Converter={StaticResource BoolToVisibility}}">Checking for updates...</TextBlock>
       <TextBlock Margin="4,0,0,0" Visibility="{x:Bind ViewModel.IsUpdateAvailable,Mode=OneWay,Converter={StaticResource BoolToVisibility}}">Update available: <Run Text="{x:Bind ViewModel.LatestVersion,Mode=OneWay}" /></TextBlock>
       <HyperlinkButton VerticalAlignment="Top" Margin="-1,20,0,0" Padding="4,0" NavigateUri="{x:Bind ViewModel.LatestReleaseUrl,Mode=OneWay}" Visibility="{x:Bind ViewModel.IsUpdateAvailable,Mode=OneWay,Converter={StaticResource BoolToVisibility}}">Download</HyperlinkButton>
       <Border Height="100">

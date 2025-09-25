@@ -6,7 +6,7 @@ namespace m1pplauncher.Services;
 
 internal static class UpdateCheckerService
 {
-  public const string REPO = "m1pposu/m1lazer-launcher";
+  public const string REPO = "m1pposu/m1pplauncher";
   public const string TAG_NAME = $"v{App.VERSION_BASE}";
   private const string RELEASES_API_URL = $"https://api.github.com/repos/{REPO}/releases";
 

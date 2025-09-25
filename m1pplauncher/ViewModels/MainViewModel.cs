@@ -118,7 +118,6 @@ public partial class MainViewModel : ObservableObject
     try
     {
       IsCheckingForUpdate = true;
-      await Task.Delay(99999);
       LatestVersion = await UpdateCheckerService.IsLatestVersionAsync();
       IsCheckingForUpdate = false;
     }
