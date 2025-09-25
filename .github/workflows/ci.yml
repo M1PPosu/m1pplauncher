@@ -1,0 +1,36 @@
+name: Publish Binary On Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  publish:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Build
+        run: dotnet publish m1pplauncher.csproj /p:PublishProfile=win-x64 -o artifacts
+
+      - name: Get Release Info
+        id: release
+        uses: octokit/request-action@v4
+        with:
+          route: GET /repos/${{ github.repository }}/releases/tags/${{ github.event.release.tag_name }}
+
+      - name: Upload Artifact
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.release.outputs.data.upload_url }}
+          asset_path: ./artifacts/m1pplauncher.exe
+          asset_name: m1pplauncher.exe
+          asset_content_type: application/octet-stream
