@@ -1,8 +1,9 @@
-name: Publish Binary On Release
+name: Publish Binary
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   publish:
@@ -21,9 +22,11 @@ jobs:
       - name: Build
         run: dotnet publish m1pplauncher/m1pplauncher.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true /p:PublishTrimmed=true -o artifacts
 
-      - name: Upload
-        uses: softprops/action-gh-release@v2
+      - name: Create Release
+        id: release
         with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           files: artifacts/m1pplauncher.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
