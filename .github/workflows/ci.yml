@@ -21,17 +21,9 @@ jobs:
       - name: Build
         run: dotnet publish m1pplauncher/m1pplauncher.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true /p:PublishTrimmed=true -o artifacts
 
-      - name: Get Release Info
-        id: release
-        uses: octokit/request-action@v2.x
+      - name: Upload
+        uses: softprops/action-gh-release@v2
         with:
+          files: artifacts/m1pplauncher.exe
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          route: GET /repos/${{ github.repository }}/releases/tags/${{ github.event.release.tag_name }}
-
-      - name: Upload Artifact
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.release.outputs.data.upload_url }}
-          asset_path: ./artifacts/m1pplauncher.exe
-          asset_name: m1pplauncher.exe
-          asset_content_type: application/octet-stream
