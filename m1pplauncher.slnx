@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="m1pplauncher/m1pplauncher.csproj">
+    <Platform Project="x64" />
+    <Deploy />
+  </Project>
+</Solution>

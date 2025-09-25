@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="m1pplauncher.Views.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:m1pplauncher"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:m1pplauncher.ViewModels"
+    mc:Ignorable="d">
+
+  <Page.DataContext>
+    <vm:MainViewModel x:Name="ViewModel" />
+  </Page.DataContext>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <Grid x:Name="TitleBar" ColumnSpacing="8" Margin="16,8,8,8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="auto" />
+        <ColumnDefinition Width="auto" />
+      </Grid.ColumnDefinitions>
+      <Border CornerRadius="6" Width="32" Height="32">
+        <Border.Background>
+          <ImageBrush ImageSource="{StaticResource LogoSquare}" />
+        </Border.Background>
+      </Border>
+      <TextBlock Grid.Column="1" VerticalAlignment="Center">
+        M1PP Lazer Launcher
+        <Run Text="{x:Bind local:App.VERSION}" />
+      </TextBlock>
+    </Grid>
+    <Grid Grid.Row="1" Margin="6,0" RowSpacing="4">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="auto" />
+        <RowDefinition Height="auto" />
+        <RowDefinition Height="auto" />
+        <RowDefinition Height="auto" />
+      </Grid.RowDefinitions>
+      <ProgressRing HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Top" Width="14" Height="14" Visibility="{x:Bind ViewModel.IsCheckingForUpdate,Mode=OneWay,Converter={StaticResource BoolToVisibility}}" />
+      <TextBlock Margin="4,0,0,0" Visibility="{x:Bind ViewModel.IsCheckingForUpdate,Mode=OneWay,Converter={StaticResource BoolToVisibility}}">Checking for updates...</TextBlock>
+      <TextBlock Margin="4,0,0,0" Visibility="{x:Bind ViewModel.IsUpdateAvailable,Mode=OneWay,Converter={StaticResource BoolToVisibility}}">Update available: <Run Text="{x:Bind ViewModel.LatestVersion,Mode=OneWay}" /></TextBlock>
+      <HyperlinkButton VerticalAlignment="Top" Margin="-1,20,0,0" Padding="4,0" NavigateUri="{x:Bind ViewModel.LatestReleaseUrl,Mode=OneWay}" Visibility="{x:Bind ViewModel.IsUpdateAvailable,Mode=OneWay,Converter={StaticResource BoolToVisibility}}">Download</HyperlinkButton>
+      <Border Height="100">
+        <Border.Background>
+          <ImageBrush ImageSource="{StaticResource Logo}" Stretch="Uniform" />
+        </Border.Background>
+      </Border>
+      <StackPanel Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-10,0,0">
+        <Button Width="32" Height="32" Padding="0" Command="{x:Bind ViewModel.OpenGitHubIssuesCommand}">
+          <FontIcon Glyph="&#xEBE8;" FontSize="14" />
+        </Button>
+        <Button Width="32" Height="32" Padding="0" Command="{x:Bind ViewModel.OpenWebsiteCommand}">
+          <FontIcon Glyph="&#xE774;" FontSize="14" />
+        </Button>
+      </StackPanel>
+      <Grid Grid.Row="1" Margin="4,0,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="auto" />
+          <ColumnDefinition Width="auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock>Server status:</TextBlock>
+        <StackPanel Grid.Column="1" Visibility="{x:Bind ViewModel.IsFetchingAvailability,Mode=OneWay,Converter={StaticResource InvBoolToVisibility}}">
+          <TextBlock Margin="4,0,0,0" TextWrapping="NoWrap" Foreground="#60cf60" Visibility="{x:Bind ViewModel.IsAvailable,Mode=OneWay,Converter={StaticResource BoolToVisibility}}">Available</TextBlock>
+          <TextBlock Margin="4,0,0,0" TextWrapping="NoWrap" Foreground="#cd5c5c" Visibility="{x:Bind ViewModel.IsAvailable,Mode=OneWay,Converter={StaticResource InvBoolToVisibility}}">Unavailable</TextBlock>
+        </StackPanel>
+        <ProgressRing Grid.Column="2" Margin="8,0,0,0" Width="19" Height="19" Visibility="{x:Bind ViewModel.IsFetchingAvailability,Mode=OneWay,Converter={StaticResource BoolToVisibility}}" />
+      </Grid>
+      <Grid Grid.Row="2" ColumnSpacing="8" Margin="4,0,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="auto" />
+          <ColumnDefinition Width="auto" />
+        </Grid.ColumnDefinitions>
+        <CheckBox Content="Block official osu! servers" IsChecked="{x:Bind ViewModel.IsPpyShBlocked,Mode=TwoWay}" Command="{x:Bind ViewModel.BlockPpyShCommand}" ToolTipService.ToolTip="This flag blocks your PC from connecting to the official osu! servers, to make sure you are fully safe." IsEnabled="{x:Bind ViewModel.IsBlockPpyShCheckBoxEnabled,Mode=OneWay}" />
+        <ProgressRing Grid.Column="1" Width="19" Height="19" Visibility="{x:Bind ViewModel.IsBlockingPpySh,Mode=OneWay,Converter={StaticResource BoolToVisibility}}" />
+        <Grid Grid.Column="1" ColumnSpacing="5">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Foreground="#ad3c3c" Margin="0,-3,0,0" VerticalAlignment="Center" Visibility="{x:Bind ViewModel.CanBlockPpySh,Mode=OneWay,Converter={StaticResource InvBoolToVisibility}}">Requires Admin.</TextBlock>
+          <Button Grid.Column="1" Width="24" Height="24" Margin="0,-4,0,0" Padding="0" Command="{x:Bind ViewModel.PromptAdministratorCommand}" Visibility="{x:Bind ViewModel.CanBlockPpySh,Mode=OneWay,Converter={StaticResource InvBoolToVisibility}}">
+            <FontIcon Glyph="&#xE83D;" FontSize="12" />
+            <Button.Resources>
+              <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+            </Button.Resources>
+          </Button>
+        </Grid>
+      </Grid>
+      <Button Grid.Row="3" Content="Connect" HorizontalAlignment="Stretch" Foreground="Black" Background="#60cf60" Command="{x:Bind ViewModel.ConnectCommand}" Visibility="{x:Bind ViewModel.IsConnectButtonVisible,Mode=OneWay,Converter={StaticResource BoolToVisibility}}">
+        <Button.Resources>
+          <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="Black" />
+          <SolidColorBrush x:Key="ButtonForegroundPressed" Color="Black" />
+          <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#40af40" />
+          <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#309f30" />
+        </Button.Resources>
+      </Button>
+      <Grid Grid.Row="3" ColumnSpacing="4" Visibility="{x:Bind ViewModel.IsDisconnectButtonVisible,Mode=OneWay,Converter={StaticResource BoolToVisibility}}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="auto" />
+        </Grid.ColumnDefinitions>
+        <Button Content="Disconnect" HorizontalAlignment="Stretch" Foreground="Black" Background="#cd5c5c" Command="{x:Bind ViewModel.DisconnectCommand}">
+          <Button.Resources>
+            <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="Black" />
+            <SolidColorBrush x:Key="ButtonForegroundPressed" Color="Black" />
+            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#ad3c3c" />
+            <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#9d2c2c" />
+          </Button.Resources>
+        </Button>
+        <Button Grid.Column="1" Background="#40af40" Width="64" Height="32" Padding="0" Command="{x:Bind ViewModel.LaunchLazerCommand}">
+          <FontIcon Glyph="&#xE768;" FontSize="14" />
+        </Button>
+      </Grid>
+      <Button Grid.Row="3" Content="osu!(lazer) installation not found." IsEnabled="false" HorizontalAlignment="Stretch" Visibility="{x:Bind ViewModel.IsLazerInstalled,Mode=OneWay,Converter={StaticResource InvBoolToVisibility}}" />
+      <Button Grid.Row="3" Content="osu!(lazer) is currently running." IsEnabled="false" HorizontalAlignment="Stretch" Visibility="{x:Bind ViewModel.IsLazerRunning,Mode=OneWay,Converter={StaticResource BoolToVisibility}}" />
+      <TextBlock Grid.Row="3" Margin="0,-4,0,0" Text="{x:Bind ViewModel.DownloadPercentage,Mode=OneWay}" HorizontalAlignment="Center" Foreground="White" Visibility="{x:Bind ViewModel.IsConnecting,Mode=OneWay,Converter={StaticResource BoolToVisibility}}" />
+      <ProgressBar Grid.Row="3" Margin="10,20,10,0" Value="{x:Bind ViewModel.ConnectDownloadProgress,Mode=OneWay}" Visibility="{x:Bind ViewModel.IsConnecting,Mode=OneWay,Converter={StaticResource BoolToVisibility}}" />
+    </Grid>
+  </Grid>
+</Page>
