@@ -19,7 +19,7 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Build
-        run: dotnet publish m1pplauncher/m1pplauncher.csproj /p:PublishProfile=win-x64 -o artifacts
+        run: dotnet publish m1pplauncher/m1pplauncher.csproj /p:PublishProfile=win-x64 -r win-x64 -o artifacts
 
       - name: Get Release Info
         id: release
