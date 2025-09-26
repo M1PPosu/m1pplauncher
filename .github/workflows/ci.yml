@@ -20,7 +20,7 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Build
-        run: dotnet publish m1pplauncher/m1pplauncher.csproj -c Release -r win-x64 --self-contained false /p:PublishSingleFile=false /p:PublishReadyToRun=false /p:PublishTrimmed=false
+        run: dotnet publish m1pplauncher/m1pplauncher.csproj -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true /p:PublishReadyToRun=false /p:PublishTrimmed=false
 
       - name: Zip Artifacts
         run: |
