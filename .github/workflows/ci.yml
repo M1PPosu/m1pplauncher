@@ -20,11 +20,14 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Build
-        run: dotnet publish m1pplauncher/m1pplauncher.csproj -c Debug -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true /p:PublishTrimmed=false -o artifacts
+        run: dotnet build m1pplauncher/m1pplauncher.csproj -r win-x64
 
-      - name: Upload
-        uses: softprops/action-gh-release@v2
+      - name: Zip Artifacts
+        run: |
+          Compress-Archive -Path m1pplauncher/bin/Debug/net10.0-windows10.0.19041.0/win-x64/* -DestinationPath m1pplauncher-artifacts.zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
         with:
-          files: artifacts/m1pplauncher.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: m1pplauncher-artifacts
+          path: m1pplauncher-artifacts.zip
