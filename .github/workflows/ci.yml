@@ -20,7 +20,7 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Build
-        run: dotnet publish m1pplauncher/m1pplauncher.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true /p:PublishTrimmed=true -o artifacts
+        run: dotnet publish m1pplauncher/m1pplauncher.csproj -c Debug -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true /p:PublishTrimmed=false -o artifacts
 
       - name: Upload
         uses: softprops/action-gh-release@v2
