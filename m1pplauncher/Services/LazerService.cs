@@ -4,9 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Timers;
 using Microsoft.UI.Xaml;
-using Windows.System;
 
 namespace m1pplauncher.Services;
 
@@ -14,24 +12,26 @@ internal static class LazerService
 {
   private const string RULESET_DOWNLOAD_URL = "https://github.com/m1pposu/LazerAuthlibInjection/releases/latest/download/ruleset.dll";
   private const string CONFIG_DOWNLOAD_URL = "https://github.com/m1pposu/LazerAuthlibInjection/releases/latest/download/config.json";
-  private static readonly string LAZER_STORAGE_INI_PATH = Path.Combine(Environment.GetEnvironmentVariable("appdata")!, "osu", "storage.ini");
+  private static readonly string LAZER_STORAGE_PATH = Path.Combine(Environment.GetEnvironmentVariable("appdata")!, "osu");
+  private static readonly string LAZER_STORAGE_INI_PATH = Path.Combine(LAZER_STORAGE_PATH, "storage.ini");
+  private static readonly string LAZER_EXECUTABLE_PATH = Path.Combine(Environment.GetEnvironmentVariable("localappdata")!, "osulazer", "current", "osu!.exe");
+
   private static string _rulesetPath = null!;
   private static string _configPath = null!;
   private static readonly DispatcherTimer _lazerTrackerTimer = new() { Interval = TimeSpan.FromSeconds(0.2) };
-
-  public static readonly string LAZER_EXECUTABLE_PATH = Path.Combine(Environment.GetEnvironmentVariable("localappdata")!, "osulazer", "current", "osu!.exe");
   public static event Action<bool>? LazerRunningChanged = null;
 
   public static async Task<bool> InitializeAsync()
   {
-    if (!File.Exists(LAZER_STORAGE_INI_PATH))
-      return false;
+    string userStoragePath = LAZER_STORAGE_PATH;
+    if (File.Exists(LAZER_STORAGE_INI_PATH))
+    {
+      string[] lines = await File.ReadAllLinesAsync(LAZER_STORAGE_INI_PATH);
+      if (lines.FirstOrDefault(x => x.StartsWith("FullPath = ")) is not string fullPath)
+        return false;
 
-    string[] lines = await File.ReadAllLinesAsync(LAZER_STORAGE_INI_PATH);
-    if (lines.FirstOrDefault(x => x.StartsWith("FullPath = ")) is not string fullPath)
-      return false;
-
-    string userStoragePath = fullPath[11..];
+      userStoragePath = fullPath[11..];
+    }
     _rulesetPath = Path.Combine(userStoragePath, "rulesets", "m1pplazer.dll");
     _configPath = Path.Combine(userStoragePath, "authlib_local_config.json");
 
@@ -74,4 +74,6 @@ internal static class LazerService
     File.Delete(_rulesetPath);
     File.Delete(_configPath);
   }
+
+  public static void LaunchLazer() => Process.Start(LAZER_EXECUTABLE_PATH);
 }

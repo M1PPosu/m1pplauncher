@@ -213,8 +213,5 @@ public partial class MainViewModel : ObservableObject
   }
 
   [RelayCommand]
-  private void LaunchLazer()
-  {
-    Process.Start(LazerService.LAZER_EXECUTABLE_PATH);
-  }
+  private void LaunchLazer() => LazerService.LaunchLazer();
 }
