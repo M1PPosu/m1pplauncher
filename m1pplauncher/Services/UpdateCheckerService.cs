@@ -1,4 +1,5 @@
-﻿using System.Net.Http;
+﻿using System.Linq;
+using System.Net.Http;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
@@ -15,8 +16,8 @@ internal static class UpdateCheckerService
     using HttpClient http = new();
     http.DefaultRequestHeaders.UserAgent.ParseAdd("m1pplauncher/" + App.VERSION_BASE);
     string json = await http.GetStringAsync(RELEASES_API_URL);
-    
-    string newestTagName = JsonNode.Parse(json)![0]!["tag_name"]!.GetValue<string>();
+
+    string? newestTagName = JsonNode.Parse(json)?.AsArray().FirstOrDefault()?["tag_name"]?.GetValue<string>();
     if(newestTagName == TAG_NAME)
       return null;
 

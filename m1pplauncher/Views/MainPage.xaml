@@ -81,7 +81,7 @@
             <ColumnDefinition Width="auto" />
             <ColumnDefinition Width="auto" />
           </Grid.ColumnDefinitions>
-          <TextBlock Foreground="#ad3c3c" Margin="0,-3,0,0" VerticalAlignment="Center" Visibility="{x:Bind ViewModel.CanBlockPpySh,Mode=OneWay,Converter={StaticResource InvBoolToVisibility}}">Requires Admin.</TextBlock>
+          <TextBlock Foreground="#ad3c3c" Margin="0,-3,0,0" VerticalAlignment="Center" Visibility="{x:Bind ViewModel.CanBlockPpySh,Mode=OneWay,Converter={StaticResource InvBoolToVisibility}}">Requires Admin</TextBlock>
           <Button Grid.Column="1" Width="24" Height="24" Margin="0,-4,0,0" Padding="0" Command="{x:Bind ViewModel.PromptAdministratorCommand}" Visibility="{x:Bind ViewModel.CanBlockPpySh,Mode=OneWay,Converter={StaticResource InvBoolToVisibility}}">
             <FontIcon Glyph="&#xE83D;" FontSize="12" />
             <Button.Resources>
