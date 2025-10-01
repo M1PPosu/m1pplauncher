@@ -7,7 +7,7 @@ namespace m1pplauncher;
 
 public partial class App : Application
 {
-  public const string VERSION_BASE = "0.1.0";
+  public const string VERSION_BASE = "0.1.1";
   public const string VERSION = VERSION_BASE + VERSION_EXTRA;
 #if DEBUG
   private const string VERSION_EXTRA = "-dev";
