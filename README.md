@@ -4,7 +4,7 @@
   </p>
 
   <a href="https://github.com/M1PPosu/m1lazer-launcher">
-    <img src="https://assets.m1pposu.dev/placeholder_i_have_to_upload_the_files_first_lmao" alt="Logo" width="80" height="80">
+    <img src="https://raw.githubusercontent.com/M1PPosu/m1pplauncher/refs/heads/main/icon.png" alt="Logo" width="80" height="80">
   </a>
 <h3 align="center">M1PP Launcher</h3>
   <p align="center">
