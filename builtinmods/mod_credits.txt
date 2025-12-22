@@ -1,0 +1,2 @@
+tosu (KotRik & Cherry) - https://github.com/tosuapp/tosu
+osu-patcher (rushiiMachine) - https://github.com/4ayo-ovh/osu-patcher-linux (ORIGINAL: https://github.com/rushiiMachine/osu-patcher)
