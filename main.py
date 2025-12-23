@@ -144,7 +144,8 @@ class MainWindow(QMainWindow):
         self.root_obj = root
         try:
             self.updatenews()
-        except:
+        except Exception as e:
+            print(e)
             self.isonline += " (Disconnected)"
         file, self.relaxpatcher, self.tosu, self.debuginfo, self.customstate = util.config_setup()
         for name, value in file.items():
@@ -185,7 +186,7 @@ class MainWindow(QMainWindow):
             response = msg.exec_()
 
             if response == QMessageBox.Yes:
-                subprocess.Popen([util.resource_path("updater.exe"), arrx["m1pppath"]])
+                ctypes.windll.shell32.ShellExecuteW(None, "runas", util.resource_path("m1ppupdater.exe"), f'"{arrx["m1pppath"]}"', None, 1)
                 sys.exit(0)
         newsbtn = self.root_obj.findChild(QObject, "newsbtn")
         newstext = self.root_obj.findChild(QObject, "newstext")
@@ -359,6 +360,7 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     willrun = True
     if len(sys.argv) > 1 and sys.argv[1].lower() == "uninstall":
+        willrun = False
         uninstall()
         sys.exit(0)
     if os.path.exists(UNINSTALL_SIGNAL):
