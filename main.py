@@ -179,14 +179,21 @@ class MainWindow(QMainWindow):
         if recv["current_version"].strip().upper() != "BETA2":
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Question)
-            msg.setText(f'New verison of M1PPLauncher has been released! Would you like to download it? ({recv["current_version"]})')
+            msg.setText(f'New version of M1PPLauncher has been released! Would you like to download it? ({recv["current_version"]})')
             msg.setWindowTitle("Update available!")
             msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             msg.setDefaultButton(QMessageBox.Yes)
-            response = msg.exec_()
+
+            response = msg.exec()
 
             if response == QMessageBox.Yes:
-                ctypes.windll.shell32.ShellExecuteW(None, "runas", util.resource_path("m1ppupdater.exe"), f'"{arrx["m1pppath"]}"', None, 1)
+                updater_src = util.resource_path("m1ppupdater.exe")
+                temp_dir = tempfile.mkdtemp(prefix="m1pp_updater_")
+                updater_dst = os.path.join(temp_dir, "m1ppupdater.exe")
+                shutil.copy2(updater_src, updater_dst)
+
+                ctypes.windll.shell32.ShellExecuteW(None, "runas", updater_dst, f'"{arrx["m1pppath"]}"', None, 1)
+
                 sys.exit(0)
         newsbtn = self.root_obj.findChild(QObject, "newsbtn")
         newstext = self.root_obj.findChild(QObject, "newstext")
