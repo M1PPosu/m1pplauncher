@@ -1,6 +1,7 @@
 import sys
 import os
 import psutil
+import shutil
 import bootstrap
 import PySide6.QtAsyncio as QtAsyncio
 import asyncio
