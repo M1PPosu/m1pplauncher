@@ -45,9 +45,12 @@ class MainWindow(QMainWindow):
         self.root_obj = None
         self.engine = None
         self.step = 1
+        self.manualpath = False
 
         self.osupath = crossinstallutil.check_osu_install_path()
         crossinstallutil.setuplog(0, f"Detected osu! path: {self.osupath}")
+        if self.osupath == 2:
+            self.manualpath = True
 
         self.m1pppath = ""
         
@@ -74,9 +77,19 @@ class MainWindow(QMainWindow):
 
         # step logic
         if step == 3:
-            if crossinstallutil.check_osu_install_path():
-                crossinstallutil.setuplog(0, "Skipping osu! path selection (auto-detected).")
-                step = 4
+            if not self.manualpath:
+                if crossinstallutil.check_osu_install_path():
+                    crossinstallutil.setuplog(0, "Skipping osu! path selection (auto-detected).")
+                    step = 4
+            else:
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Critical)
+                msg.setText(
+                    "We could not resolve a valid osu! stable path, please select your osu! stable installation folder."
+                )
+                msg.setWindowTitle("Error")
+                msg.exec_()
+                step = 999
 
         elif step == 5:
             foldersel = self.root_obj.findChild(QObject, "pathsel")
@@ -118,6 +131,37 @@ class MainWindow(QMainWindow):
 
             textsum = self.root_obj.findChild(QObject, "summarytext")
             textsum.setProperty("text", f"osu! path: {self.osupath}\nInstallation path: {self.m1pppath}")
+        elif step == 9990:
+            foldersel = self.root_obj.findChild(QObject, "opathsel")
+            folder = foldersel.property("displayText")
+            crossinstallutil.setuplog(0, f"User selected game folder: {folder}")
+
+            if not os.access(folder, os.R_OK):
+                crossinstallutil.setuplog(2, f"Directory not readable: {folder}")
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Critical)
+                msg.setText(
+                    "The path you selected is inaccessible."
+                    "Please run the installer with administrator privileges."
+                )
+                msg.setWindowTitle("Error")
+                msg.exec_()
+                return
+
+            if not os.path.isfile(folder + "\\osu!auth.dll"):
+                crossinstallutil.setuplog(2, f"Directory invalid: {folder}")
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Critical)
+                msg.setText(
+                    "The path you selected does not contain an osu! stable installation."
+                )
+                msg.setWindowTitle("Error")
+                msg.exec_()
+                return
+            
+            self.osupath = folder
+            step = 4
+            self.aaaaaa = False
 
         elif step == 33:
             if self.osupath:
@@ -142,7 +186,7 @@ class MainWindow(QMainWindow):
             self.osupath = crossinstallutil.check_osu_install_path()
             crossinstallutil.setuplog(0, f"Re-detected osu! path: {self.osupath}")
 
-            if self.osupath is False:
+            if self.osupath == False:
                 crossinstallutil.setuplog(2, "osu!stable not found while rechecking.")
                 msg = QMessageBox()
                 msg.setIcon(QMessageBox.Critical)
@@ -160,8 +204,15 @@ class MainWindow(QMainWindow):
             if folder != "":
                 textinput.setProperty("text", folder)
             return
+        elif step == 99979:
+            folder = str(QFileDialog.getExistingDirectory(self, "Select osu! install directory"))
+            crossinstallutil.setuplog(0, f"Manual game folder selection returned: {folder}")
 
-        # switch QML pages
+            textinput = self.root_obj.findChild(QObject, "opathsel")
+            if folder != "":
+                textinput.setProperty("text", folder)
+            return
+
         nextstep = self.root_obj.findChild(QObject, f"step{step}")
         prevstep = self.root_obj.findChild(QObject, f"step{self.step}")
 
@@ -208,7 +259,6 @@ class MainWindow(QMainWindow):
             if nextstep:
                 nextstep.setProperty("visible", True)
             self.step = step
-
 
 if __name__ == "__main__":
     crossinstallutil.setuplog(0, "Installer started.")

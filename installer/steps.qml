@@ -352,6 +352,54 @@ ApplicationWindow {
             width: 330
             anchors.horizontalCenter: parent.horizontalCenter
         }
-        
     }
+    GroupBox {
+        objectName: "step999"
+        width: 600
+        height: 600
+        visible: false
+        Text {
+            color: "#ffffff"
+            y: 50
+            font.pixelSize: 30
+            font.weight: 700
+            text: "Select game path"
+            anchors.horizontalCenter: parent.horizontalCenter
+            horizontalAlignment: Text.AlignHCenter
+        }
+
+        Text {
+            color: "#ffffff"
+            font.pixelSize: 16
+            font.weight: 400
+            text: "Select the folder containing your osu! stable installation\n\n\n\n\n\n"
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Text.AlignHCenter
+        }
+        TextField {
+            placeholderText: qsTr("Installation path")
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.horizontalCenter: parent.horizontalCenter
+            objectName: "opathsel"
+            width: 500
+            x: 45
+            
+        }
+        Button {
+            onClicked: window.display_step(99979)
+            objectName: "opathselbtn"
+            text: "Browse files"
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 335
+            width: 200
+        }
+        Button {
+            onClicked: window.display_step(9990)
+            text: "Next"
+            y: 490
+            x: 390
+            width: 160
+        }
+    }  
 }

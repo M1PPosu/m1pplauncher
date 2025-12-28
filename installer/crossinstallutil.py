@@ -65,6 +65,8 @@ def check_osu_install_path():
                     kValue2 = winreg.QueryValueEx(kKey, "DisplayIcon")
                     path = kValue2[0].replace("osu!.exe", "")
                     setuplog(0, f"osu! path resolved: {path}")
+                    if not os.path.isfile(path + "\\osu!auth.dll"):
+                        return 2
                     return path
 
                 i += 1

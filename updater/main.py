@@ -99,6 +99,7 @@ if __name__ == "__main__":
         mipath = sys.argv[3]
         shutil.rmtree(mipath, ignore_errors=True)
         ctypes.windll.user32.MessageBoxW(0, "M1PP Launcher has been uninstalled.", "Success", 4160)
+        sys.exit(0)
 
     if not is_admin():
         ctypes.windll.shell32.ShellExecuteW(
