@@ -14,13 +14,11 @@ from threading import Thread
 from PySide6.QtWidgets import QMessageBox
 from itertools import chain
 import urllib.request
+from ctypes import windll
+
 
 def messageerr(text):
-    msg = QMessageBox()
-    msg.setIcon(QMessageBox.Critical)
-    msg.setText(text)
-    msg.setWindowTitle("Error")
-    msg.exec_()
+    return windll.user32.MessageBoxW(0, text, "Error", 4112)
 
 def load_mods(skipmods, osuplatform):
     configdata = util.get_configdata()
@@ -84,8 +82,10 @@ def load_mods(skipmods, osuplatform):
     return moddata
 
 def inject_mods(mods, ppid):
-    time.sleep(3.45) # shitty way to fix injectors injecting too early
+    time.sleep(3) # shitty way to fix injectors injecting too early
     for mod_path, mod in mods.items():
+        print(mod_path)
+        print(mod)
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startcmd = [os.path.join(mod_path, mod["payload"]["executable"])]
@@ -102,6 +102,8 @@ def inject_mods(mods, ppid):
                 modproc = subprocess.Popen(
                     startcmd,
                     startupinfo=startupinfo,
+                    shell=True,
+                    creationflags=subprocess.SW_HIDE,
                     stdout=subprocess.PIPE
                 )
                 print("e")
@@ -110,9 +112,11 @@ def inject_mods(mods, ppid):
                 if code != 0:
                     thread = Thread(target = messageerr, args = ("Exit code: " + str(code) + "\n\n" + mod["errormessage"],))
                     thread.start()
-            else: # avoid broken pipe errors
+            else:
                 subprocess.Popen(
                     startcmd,
+                    shell=True,
+                    creationflags=subprocess.SW_HIDE,
                     startupinfo=startupinfo
                 )
                 print("e")
@@ -122,101 +126,102 @@ def inject_mods(mods, ppid):
 # this is very hacky, osu! doesn't respect the -devserver argument when updating.
 def launch_osu(gameserver, mods):
     configdata = util.get_configdata()
-    dorun = True
+
     if os.path.isdir(configdata["m1pppath"]) and os.path.isdir(configdata["osupath"]):
+        dorun = True
         while dorun:
+
             try:
                 for procx in psutil.process_iter():
                     if procx.name() == "osu!.exe":
                         procx.kill()
-            except:
+            except Exception as e:
                 pass
+
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
             proc = subprocess.Popen(
-                [os.path.join(configdata["m1pppath"], "osu!.exe"),
-                "-devserver", gameserver],
+                [
+                    os.path.join(configdata["m1pppath"], "osu!.exe"),
+                    "-devserver",
+                    gameserver
+                ],
                 cwd=configdata["m1pppath"],
                 startupinfo=startupinfo
             )
-            dorun = False
-            checkserver = True
-            safeclose = True
+            processc = True
+            process = None
+            lastproctime = time.time()
             injected = False
-            try:
-                while proc.poll() is None:
-                    process = None
-                    while process == None:
-                        for p in psutil.process_iter(['pid','name']):
-                            if p.info['name'] and p.info['name'].lower() == 'osu!.exe':
-                                process = p
-                                break
-                        if not process == None:
-                            break
-
-                    if checkserver:
-                        cmd = process.cmdline()
-                        if not gameserver in cmd:
-                            if not any(ext in cmd for ext in [".osk", ".osr", ".osu", ".osz", ".osb"]):
-                                for proc in psutil.process_iter():
-                                    if proc.name() == "osu!.exe":
-                                        safeclose = False
-                                        dorun = True
-                                        proc.kill()
+            stagec = False
+            lastpid = 0
+            sentc = False
+            osucc = False
+            while processc:
+                for p in psutil.process_iter(['pid', 'name']):
+                    if p.info['name'] and p.info['name'].lower() == 'osu!.exe':
+                        lastproctime = time.time()
+                        if lastpid == 0:
+                            lastpid = p.pid
                         else:
-                            if not injected:  
-                                # osu! splashscreen has the title "osu! (loading)"
-                                found = False
-                                windows = pyautogui.getAllWindows()
-                                for window in windows:
-                                    if window.title == "osu!":
-                                        found = True
-                                if found:
-                                    thread = Thread(target = inject_mods, args = (mods, proc.pid,))
-                                    thread.start()
-                                    injected = True
+                            stagec = True
+                        process = p
+                        break
 
-                   
-                    
-            except:
+                if time.time() - lastproctime > 2.05:
+                    return 0
+                
                 try:
-                    for procxx in psutil.process_iter():
-                        if procxx.name() == "osu!.exe":
-                            procxx.kill()  
-                    continue
-                except psutil.NoSuchProcess:
-                    continue
-            if not dorun:
-                return 0
-            else:
-                continue
-            if safeclose:
-                return 0
+                    windows = pyautogui.getAllWindows()
+                    if not osucc:
+                        for window in windows:
+                            if window.title and window.title == "osu!":
+                                if window.width > 750:
+                                    cmd = process.cmdline()
+                                    if not gameserver in cmd:
+                                        if not any(ext in cmd for ext in [".osk", ".osr", ".osu", ".osz", ".osb"]):
+                                            for proc in psutil.process_iter():
+                                                if proc.name() == "osu!.exe":
+                                                    proc.kill()
+                                                    return 9
+                                    elif gameserver in cmd:
+                                        osucc = True
+                            elif window.title and "cuttingedge" in window.title and not sentc:
+                                thread = Thread(target = messageerr, args = ('You are currently using the "cuttingedge" channel in osu!\nPlease switch to the Stable channel in order to keep playing on M1PP',), daemon=True)
+                                thread.start()
+                                sentc = True
+                except:
+                    return 0
 
-        return 0
-            
-            
-    else:
-        return 1
-    
+                if not injected:
+                    # osu! splashscreen has the title "osu! (loading)"
+                    found = False
+                    windows = pyautogui.getAllWindows()
+                    for window in windows:
+                        if window.title and window.title == "osu!":
+                            if window.width > 750:
+                                found = True
+                    if found:
+                        print(process.pid)
+                        thread = Thread(target = inject_mods, args = (mods, process.pid,))
+                        thread.start()
+                        print("inj")
+                        injected = True   
+                time.sleep(0.03)
+                    
 
-def wait_to_hold(windowname, procname, checkinterval=0.5): 
+
+def wait_to_hold(): 
     while True:
-        windows = pyautogui.getAllWindows()
-        if any(w.title == windowname for w in windows):
-            break
-        time.sleep(checkinterval)
+        for p in psutil.process_iter(['pid', 'name']):
+            if p.info['name'] and p.info['name'].lower() == 'osu!.exe':
+                lastproctime = time.time()
+                break
 
-    while True:
-        proc_exists = any(
-            p.info["name"] == procname
-            for p in psutil.process_iter(["name"])
-        )
-
-        if not proc_exists:
-            return True
-
-        time.sleep(checkinterval)
+        if time.time() - lastproctime > 1.3:
+            return 0
+        time.sleep(0.1)
 
 def setup_settings_lazer():
     appdata_path = os.getenv("APPDATA")
@@ -238,22 +243,6 @@ def unsetup_settings_lazer():
     if pathdir:
         os.remove(os.path.join(appdata_path, "osu", "rulesets", "osu.Game.Rulesets.AuthlibInjection.dll"))
 
-def wait_to_kill(windowname, procname, delay = None):
-    windows = pyautogui.getAllWindows()
-    waitforlwin = True
-    while waitforlwin:
-        for window in windows:
-            if window.title == windowname:
-                try:
-                    for procxx in psutil.process_iter():
-                        if procxx.name() == procname:
-                            if delay:
-                                time.sleep(delay)
-                            procxx.kill()
-                            return True
-                except psutil.NoSuchProcess:
-                    return True
-
 def setup_osu_lazer():
     url = "https://github.com/ppy/osu/releases/latest/download/install.exe"
     local_path = os.path.join(os.getenv("LOCALAPPDATA"), "osulazer", "current", "osu!.exe")
@@ -266,7 +255,7 @@ def setup_osu_lazer():
         if proc.returncode != 0:
             todl = True
     except subprocess.TimeoutExpired:
-        wait_to_hold("osu!", "osu!.exe")
+        wait_to_hold()
         return True
     except Exception:
         todl = True
@@ -298,7 +287,7 @@ def setup_osu_lazer():
         setup_settings_lazer()
         proc = subprocess.Popen([local_path, "--api-url=lazer-api.m1pposu.dev", "--website-url=lazer.m1pposu.dev", "--disable-sentry-logger"])
         proc.wait()
-        wait_to_hold("osu!", "osu!.exe")
+        wait_to_hold()
         unsetup_settings_lazer() 
         return True     
     except Exception as ex:

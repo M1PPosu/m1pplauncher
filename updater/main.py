@@ -1,11 +1,13 @@
 import sys
 import os
 import ctypes
+import time
 import datetime
 import asyncio
 import aiohttp
 import aiofiles
 import subprocess
+import shutil
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtQml import QQmlApplicationEngine
@@ -90,6 +92,13 @@ class Updater(QObject):
 
 if __name__ == "__main__":
     setuplog(0, "Updater started")
+
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "finishuninstall":
+        time.sleep(2)
+        subprocess.call(['taskkill', '/F', '/T', '/PID',  sys.argv[2]])
+        mipath = sys.argv[3]
+        shutil.rmtree(mipath, ignore_errors=True)
+        ctypes.windll.user32.MessageBoxW(0, "M1PP Launcher has been uninstalled.", "Success", 4160)
 
     if not is_admin():
         ctypes.windll.shell32.ShellExecuteW(

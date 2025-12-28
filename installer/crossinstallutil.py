@@ -186,6 +186,7 @@ async def install_osu(m1pppath, osupath, curbar, curtext):
         winreg.SetValueEx(reg_key, "UninstallString", 0, winreg.REG_SZ, m1pppath + "\\m1pplauncher.exe uninstall")
         winreg.SetValueEx(reg_key, "Publisher", 0, winreg.REG_SZ, "M1PPosu")
         winreg.SetValueEx(reg_key, "InstallLocation", 0, winreg.REG_SZ, m1pppath)
+        winreg.SetValueEx(reg_key, "DisplayIcon", 0, winreg.REG_SZ, m1pppath + "\\m1pplauncher.exe,0")
         winreg.CloseKey(reg_key)
         setuplog(0, "Registry uninstall entry created.")
 
@@ -197,12 +198,12 @@ async def install_osu(m1pppath, osupath, curbar, curtext):
             make_shortcut(m1pppath + r"\m1pplauncher.exe",
                           desktop + r"\M1PP Launcher.lnk",
                           m1pppath,
-                          m1pppath + r"\icon.ico")
+                          m1pppath + r"\m1pplauncher.exe,0")
 
             make_shortcut(m1pppath + r"\m1pplauncher.exe",
                           startmenu + r"\M1PP Launcher.lnk",
                           m1pppath,
-                          m1pppath + r"\icon.ico")
+                          m1pppath + r"\m1pplauncher.exe,0")
 
         except Exception as e:
             setuplog(2, f"Shortcut creation failed: {e}")

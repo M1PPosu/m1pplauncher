@@ -54,13 +54,11 @@ ApplicationWindow {
             }
         }
 
-        // StackLayout for each tab's content
         StackLayout {
             id: stackLayout
             Layout.fillWidth: true
             Layout.fillHeight: true
             Material.accent: Material.Purple
-            // Tab 1 Content
             Item {
                 Rectangle {
                     anchors.fill: parent
@@ -140,7 +138,6 @@ ApplicationWindow {
                 }
             }
 
-            // Tab 2 Content
             Item {
                 Rectangle {
                     anchors.fill: parent
@@ -206,7 +203,6 @@ ApplicationWindow {
                 }
             }
 
-            // Tab 3 Content
             Item {
                 Rectangle {
                     anchors.fill: parent
@@ -238,7 +234,6 @@ ApplicationWindow {
                 }
             }
 
-            // Tab 4 Content
             Item {
                 Rectangle {
                     anchors.fill: parent
@@ -256,7 +251,7 @@ ApplicationWindow {
                         text: qsTr("RelaxPatcher (rushiiMachine)")
                         y: 96
                         x: 40
-                        checked: switch_hidelauncher
+                        checked: switch_patcher
                         onClicked: window.execguifn(0, checked)
                     }
                     Switch {
@@ -264,7 +259,7 @@ ApplicationWindow {
                         text: qsTr("tosu (KotRik & Cherry)")
                         y: 146
                         x: 40
-                        checked: switch_launchinfo
+                        checked: switch_tosu
                         onClicked: window.execguifn(1, checked)
                     }
                     Button {
@@ -278,7 +273,6 @@ ApplicationWindow {
                 }
             }
 
-            // Tab 5 Content
             Item {
                 Button {
                     id: ghlink

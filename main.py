@@ -90,30 +90,17 @@ def uninstall():
             sys.exit(0)
 
         pid = os.getpid()
-        exe_path = os.path.abspath(str(mipath) + "m1pplauncher.exe")
 
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         os.remove(UNINSTALL_SIGNAL)
-        with tempfile.NamedTemporaryFile(
-            delete=False,
-            suffix=".bat",
-            mode="w",
-            encoding="utf-8"
-        ) as bat:
-            bat.write(f"""@echo off
-timeout /t 2 >nul
-taskkill /f /pid {pid} >nul 2>&1
-rmdir /s /q "{mipath}"
-del /f /q "{exe_path}"
-del /f /q "%~f0"
-""")
 
-        subprocess.Popen(
-            ["cmd.exe", "/c", bat.name],
-            startupinfo=startupinfo,
-            creationflags=0x08000000
-        )
+        updater_src = util.resource_path("m1ppupdater.exe")
+        temp_dir = tempfile.mkdtemp(prefix="m1pp_uninstaller_")
+        updater_dst = os.path.join(temp_dir, "m1ppupdater.exe")
+        shutil.copy2(updater_src, updater_dst)
+
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", updater_dst, f'finishuninstall {pid} "{mipath}"', None, 1)
 
     except Exception as e:
         print("FATAL uninstall error:", e)
@@ -177,7 +164,7 @@ class MainWindow(QMainWindow):
     def updatenews(self):
         recv = requests.get("https://4ayo.ovh/m1pposu/news/news.json", timeout=2).json()
         arrx = util.get_configdata()
-        if recv["current_version"].strip().upper() != "BETA2":
+        if recv["current_version"].strip().upper() != "BETA3":
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Question)
             msg.setText(f'New version of M1PPLauncher has been released! Would you like to download it? ({recv["current_version"]})')
@@ -258,9 +245,11 @@ class MainWindow(QMainWindow):
                 playbtn.setProperty("enabled", False)
                 playbtn.setProperty("text", "LOADING MODS")
                 dismods = []
-                if util.config_read_value("id0") == 1:
+                id0 = util.config_read_value("id0")
+                id1 = util.config_read_value("id1")
+                if id0 == 0:
                     dismods.append("RelaxPatcher")
-                if util.config_read_value("id1") == 1:
+                if id1 == 0:
                     dismods.append("tosu")
                 
                 mods = await asyncio.to_thread(bootstrap.load_mods, dismods, platform)
@@ -278,7 +267,7 @@ class MainWindow(QMainWindow):
                     if util.config_read_value("id111") != 0:
                         svst = self.root_obj.findChild(QObject, "serverinp")
                         server = svst.property("displayText")
-                        if server != "ppy.sh":
+                        if server != "ppy.sh" and server != "":
                             gameserver = server
                         else:
                             msg = QMessageBox()
@@ -293,6 +282,7 @@ class MainWindow(QMainWindow):
                         if gameserver == 10:
                             gameserver = "m1pposu.dev"
                         playbtn.setProperty("text", "LAUNCHING")
+                        print(mods)
                         bootstrap_result = await asyncio.to_thread(bootstrap.launch_osu, gameserver, mods)
                         
                         if bootstrap_result == 1:
@@ -301,16 +291,16 @@ class MainWindow(QMainWindow):
                             msg.setText("Your M1PP Launcher installation is corrupted! Please try reinstalling the launcher.")
                             msg.setWindowTitle("Error")
                             msg.exec_()
+                        if bootstrap_result == 9:
+                            isgd = True
+                            while isgd:
+                                bootstrap_result = await asyncio.to_thread(bootstrap.launch_osu, gameserver, mods)
+                                if bootstrap_result != 9:
+                                    isgd = False
+                                    break
                     else:
                         playbtn.setProperty("text", "LAUNCHING")
                         bootstrap_result = await asyncio.to_thread(bootstrap.setup_osu_lazer)
-                        
-                        if bootstrap_result == False:
-                            msg = QMessageBox()
-                            msg.setIcon(QMessageBox.Critical)
-                            msg.setText("Something went wrong. Please contact us on Discord.")
-                            msg.setWindowTitle("Error")
-                            msg.exec_()      
                     playbtn.setProperty("enabled", True)
                     playbtn.setProperty("text", "LAUNCH")
                     #if util.config_read_value("id10") == 1:
