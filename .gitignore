@@ -1,0 +1,39 @@
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+@"
+
+# --- local envs ---
+.venv*/
+.tools/
+
+# --- build outputs ---
+build/
+dist/
+installer/build/
+installer/dist/
+updater/build/
+updater/dist/
+releases/
+
+# --- binaries ---
+*.exe
+*.dll
+*.pak
+
+# --- pyinstaller ---
+*.spec
+
+# --- caches ---
+__pycache__/
+*.pyc
+
+# --- local runtime files ---
+installdata.json
+launchersettings.json
+*.log
+m1ppupdatelog-*.txt
+"@ | Add-Content -Encoding UTF8 ".\.gitignore"
