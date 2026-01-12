@@ -9,8 +9,8 @@
   <h1>M1PP Launcher</h1>
 
   <p>
-    Windows launcher for routing <b>osu!stable</b> + <b>osu!lazer</b> to M1PP /
-    M1Lazer community servers — with optional mod tooling, an updater, logs, and
+    Windows launcher for connecting to <b>osu!stable</b> & <b>osu!lazer</b> private servers
+    with optional mod tooling, an updater, logs, and
     Discord Rich Presence.
   </p>
 
@@ -59,7 +59,7 @@
 
 ## What this is (and what it isn’t)
 
-M1PP Launcher exists to make connecting to **M1PP / M1Lazer** painless:
+M1PP Launcher exists to make connecting to **M1PPosu / M1Lazer** painless:
 
 - One UI, two clients, correct routing every time
 - Optional mods (built-in + custom `.mmod`)
@@ -100,3 +100,5 @@ Stable routing is the classic devserver approach:
 
 ```txt
 osu!.exe -devserver <domain>
+
+Please note, to join a "custom" stable server all you have to do is enable to feature in settings, then input the domain e.g. sunrise.uk
