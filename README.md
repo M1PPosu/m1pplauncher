@@ -101,4 +101,4 @@ Stable routing is the classic devserver approach:
 ```txt
 osu!.exe -devserver <domain>
 
-Please note, to join a "custom" stable server all you have to do is enable to feature in settings, then input the domain e.g. sunrise.uk
+Please note, to join a "custom" stable server all you have to do is enable the "Custom Server" feature in settings, then input the domain e.g. sunrise.uk
