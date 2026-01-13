@@ -137,7 +137,7 @@ async def install_osu(m1pppath, osupath, curbar, curtext):
         #keep in mind I did change latest/ to v4B.
         async with aiohttp.ClientSession() as session:
             chunkstotal = 0
-            url = "https://4ayo.ovh/m1pposu/files/launcher/v4B/m1pplauncher.exe"
+            url = "https://4ayo.ovh/m1pposu/files/launcher/latest/v4B/m1pplauncher.exe"
             destination_file = os.path.join(m1pppath, "m1pplauncher.exe")
             setuplog(0, f"Downloading launcher: {url}")
             curtext.setProperty("text", "Installing: " + destination_file + "\n\n")
