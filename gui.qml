@@ -15,27 +15,30 @@ ApplicationWindow {
     maximumHeight: height
 
     visible: true
-    title: "M1PP Launcher"
+    title: "Mippo Launcher"
 
     Material.theme: Material.Dark
     Material.accent: Material.Purple
 
     color: "#111111"
 
-    property string launchFontPath: "font/Freedom-10eM.ttf"
-    readonly property string launchFontFamily: (launchFont.status === FontLoader.Ready && launchFont.name && launchFont.name.length)
-                                              ? launchFont.name
-                                              : "Segoe UI"
+    property string launchFontPath: Qt.resolvedUrl("font/Freedom-10eM.ttf")
+
+    readonly property string launchFontFamily: (launchFont.status === FontLoader.Ready
+                                                && launchFont.name
+                                                && launchFont.name.length)
+                                                ? launchFont.name
+                                                : "Segoe UI"
 
     FontLoader {
         id: launchFont
-        source: app.launchFontPath
+        source: launchFontPath
     }
 
     ListModel {
         id: slidesModel
         ListElement { img: "slides/slide1.png"; title: "Change Logs"; buttonText: "READ MORE"; link: "https://github.com/M1PPosu/m1pplauncher"; buttonVisible: true }
-        ListElement { img: "slides/slide2.png"; title: "M1WC Registration Open Until Feb 2nd"; buttonText: "REGISTER"; link: "https://discord.gg/HZxUCDET3p"; buttonVisible: true }
+        ListElement { img: "slides/slide2.png"; title: "Check out our Brand-New Hytale Server!!"; buttonText: "Learn More"; link: "https://discord.gg/SD9uztGnRR"; buttonVisible: true }
         ListElement { img: "slides/slide3.png"; title: "Join the Discord"; buttonText: "JOIN"; link: "https://discord.gg/2ujhGaZ6Z9"; buttonVisible: true }
     }
 
@@ -269,7 +272,7 @@ ApplicationWindow {
                     spacing: 2
 
                     Text {
-                        text: "M1PP Launcher v4.0B © 2026"
+                        text: "Mippo Launcher v4.0B"
                         color: app.textStrong
                         font.pixelSize: 16
                         font.weight: 950
@@ -402,7 +405,7 @@ ApplicationWindow {
                                         objectName: "serverinp"
                                         anchors.fill: parent
                                         visible: useCustomServer.checked
-                                        placeholderText: qsTr("Custom server e.g:(m1pposu.dev)")
+                                        placeholderText: qsTr("Custom server domain e.g:(m1pposu.dev)")
 
                                         leftPadding: 14
                                         rightPadding: 14
@@ -1011,7 +1014,7 @@ ApplicationWindow {
                                         }
 
                                         Text {
-                                            text: "M1PP Launcher routes osu!stable and osu!lazer to private servers and can load built-in or custom mods."
+                                            text: "Mippo Launcher routes osu!stable and osu!lazer to private servers and can load built-in or custom mods."
                                             color: app.textSoft
                                             font.pixelSize: 13
                                             font.weight: 650

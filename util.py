@@ -2,7 +2,7 @@ import os
 import sys
 import json
 
-_DEFAULT_SETTINGS = {"id0": 1, "id1": 1, "id10": 0, "id11": 1, "id111": 0}
+_DEFAULT_SETTINGS = {"id0": 1, "id1": 1, "id11": 1, "id111": 0}
 
 def get_app_path() -> str:
     if getattr(sys, "frozen", False):
@@ -61,15 +61,15 @@ def config_setup():
         data = dict(_DEFAULT_SETTINGS)
         _write_json_file(targetfile, data)
 
-    changed = False
+    normalized = {}
     for key in _DEFAULT_SETTINGS.keys():
-        v = _coerce_setting_value(key, data.get(key, _DEFAULT_SETTINGS[key]))
-        if data.get(key) != v:
-            data[key] = v
-            changed = True
+        normalized[key] = _coerce_setting_value(key, data.get(key, _DEFAULT_SETTINGS[key]))
 
-    if changed:
+    if data != normalized:
+        data = normalized
         _write_json_file(targetfile, data)
+    else:
+        data = normalized
 
     return dict(data), data["id0"], data["id1"], data["id11"], data["id111"]
 

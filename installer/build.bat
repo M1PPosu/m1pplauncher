@@ -2,20 +2,22 @@
 setlocal
 
 set "CURDIR=%~dp0"
+set "ROOT=%CURDIR%.."
 
-py -m PyInstaller --noconfirm --onefile --windowed ^
---paths "%CURDIR%.." ^
---hidden-import m1pp_logger ^
---icon "%CURDIR%icon.ico" ^
---name "m1ppinstaller" ^
---uac-admin ^
---add-data "%CURDIR%steps.qml;." ^
---add-data "%CURDIR%..\gui.qml;." ^
---add-data "%CURDIR%..\icon.png;." ^
---add-data "%CURDIR%..\fade.png;." ^
---add-data "%CURDIR%..\unknown.png;." ^
---add-data "%CURDIR%..\slides;slides" ^
-"%CURDIR%main.py"
+py -m PyInstaller --noconfirm --clean --onefile --windowed ^
+  --paths "%ROOT%" ^
+  --hidden-import m1pp_logger ^
+  --icon "%CURDIR%icon.ico" ^
+  --name "m1ppinstaller" ^
+  --uac-admin ^
+  --add-data "%CURDIR%steps.qml;." ^
+  --add-data "%ROOT%\gui.qml;." ^
+  --add-data "%ROOT%\icon.png;." ^
+  --add-data "%ROOT%\fade.png;." ^
+  --add-data "%ROOT%\unknown.png;." ^
+  --add-data "%ROOT%\slides;slides" ^
+  --add-data "%ROOT%\font;font" ^
+  "%CURDIR%main.py"
 
 endlocal
 pause

@@ -37,16 +37,17 @@ def setup(context: str, log_dir: Optional[str] = None) -> str:
             fmt="(%(asctime)s) [%(levelname)s] %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
-
+        #this could be tidier but I couldn't be bothered to add it. 
         fh = logging.FileHandler(log_path, encoding="utf-8")
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(fmt)
         logger.addHandler(fh)
 
-        sh = logging.StreamHandler(stream=sys.stdout)
-        sh.setLevel(logging.INFO)
-        sh.setFormatter(fmt)
-        logger.addHandler(sh)
+        if getattr(sys, "stdout", None) is not None and hasattr(sys.stdout, "write"):
+            sh = logging.StreamHandler(stream=sys.stdout)
+            sh.setLevel (logging.INFO)
+            sh.setFormatter(fmt)
+            logger.addHandler(sh)
 
     _contexts[context] = (logger, log_path)
     

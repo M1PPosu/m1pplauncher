@@ -14,7 +14,7 @@ ApplicationWindow {
     maximumHeight: height
 
     visible: true
-    title: "M1PP Launcher Installer"
+    title: "Mippo Launcher Installer"
 
     Material.theme: Material.Dark
     Material.accent: Material.Purple
@@ -124,7 +124,7 @@ ApplicationWindow {
                     spacing: 4
 
                     Text {
-                        text: "M1PP Launcher"
+                        text: "Mippo Launcher"
                         color: textStrong
                         font.pixelSize: 18
                         font.weight: 800
@@ -367,14 +367,14 @@ ApplicationWindow {
                             spacing: 6
 
                             Text {
-                                text: "Install M1PP Launcher"
+                                text: "Install Mippo Launcher"
                                 color: textStrong
                                 font.pixelSize: 30
                                 font.weight: 900
                                 Layout.fillWidth: true
                             }
                             Text {
-                                text: "This wizard will install M1PP Launcher and configure osu! to launch with your private server settings."
+                                text: "This wizard will install Mippo Launcher and configure osu! to launch with your private server settings."
                                 color: textSoft
                                 font.pixelSize: 13
                                 wrapMode: Text.WordWrap
@@ -457,7 +457,7 @@ ApplicationWindow {
                                             Rectangle { width: 8; height: 8; radius: 8; color: Material.accentColor; opacity: 0.95 }
 
                                             Text {
-                                                text: "Install M1PP Launcher into your chosen folder"
+                                                text: "Install Mippo Launcher into your chosen folder"
                                                 color: textSoft
                                                 font.pixelSize: 13
                                                 wrapMode: Text.WordWrap
@@ -717,7 +717,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                             }
                             Text {
-                                text: "Select the folder where you want to install M1PP Launcher"
+                                text: "Select the folder where you want to install Mippo Launcher"
                                 color: textSoft
                                 font.pixelSize: 13
                                 wrapMode: Text.WordWrap
@@ -961,7 +961,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                             }
                             Text {
-                                text: "M1PP Launcher has been installed! You can now launch it\nfrom your application menu."
+                                text: "Mippo Launcher has been installed! You can now launch it\nfrom your application menu."
                                 color: textSoft
                                 font.pixelSize: 13
                                 wrapMode: Text.WordWrap

@@ -1,4 +1,3 @@
-import asyncio
 import glob
 import json
 import os
@@ -185,6 +184,31 @@ def _find_tosu_exe(mods) -> str:
     return ""
 
 
+def _spawn_logged_tosu(exe_path: str, run_cwd: str, startupinfo) -> None:
+    proc = subprocess.Popen(
+        [exe_path],
+        cwd=run_cwd,
+        startupinfo=startupinfo,
+        shell=False,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    def _log_pipe():
+        try:
+            if proc.stdout is None:
+                return
+            for line in iter(proc.stdout.readline, b""):
+                if not line:
+                    break
+                _log.info("[tosu] %s", line.decode("utf-8", errors="replace").rstrip())
+        except Exception:
+            pass
+
+    Thread(target=_log_pipe, daemon=True).start()
+
+
 def ensure_tosu_running(mods=None) -> bool:
     if _is_process_running("tosu.exe"):
         return True
@@ -199,28 +223,7 @@ def ensure_tosu_running(mods=None) -> bool:
     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
     try:
-        proc = subprocess.Popen(
-            [exe_path],
-            cwd=run_cwd,
-            startupinfo=startupinfo,
-            shell=False,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-
-        def _log_pipe():
-            try:
-                if proc.stdout is None:
-                    return
-                for line in iter(proc.stdout.readline, b""):
-                    if not line:
-                        break
-                    _log.info("[tosu] %s", line.decode("utf-8", errors="replace").rstrip())
-            except Exception:
-                pass
-
-        Thread(target=_log_pipe, daemon=True).start()
+        _spawn_logged_tosu(exe_path, run_cwd, startupinfo)
         return True
 
     except Exception:
@@ -258,29 +261,7 @@ def inject_mods(mods, ppid):
             exe_path, run_cwd = _ensure_persistent_tool(exe_path, "tosu")
 
             try:
-                proc = subprocess.Popen(
-                    [exe_path],
-                    cwd=run_cwd,
-                    startupinfo=startupinfo,
-                    shell=False,
-                    creationflags=subprocess.CREATE_NO_WINDOW,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                )
-
-                def _log_pipe():
-                    try:
-                        if proc.stdout is None:
-                            return
-                        for line in iter(proc.stdout.readline, b""):
-                            if not line:
-                                break
-                            _log.info("[tosu] %s", line.decode("utf-8", errors="replace").rstrip())
-                    except Exception:
-                        pass
-
-                Thread(target=_log_pipe, daemon=True).start()
-
+                _spawn_logged_tosu(exe_path, run_cwd, startupinfo)
             except Exception:
                 _log.exception("Injector failed (tosu). exe=%s", exe_path)
 
@@ -490,25 +471,6 @@ def setup_settings_lazer():
     if not installed:
         _log.error("AuthlibInjection ruleset install failed; lazer will use Bancho.")
     return installed
-
-
-def unsetup_settings_lazer():
-    appdata_path = os.getenv("APPDATA") or ""
-    if not appdata_path:
-        return
-
-    for d in [
-        os.path.join(appdata_path, "osu", "rulesets"),
-        os.path.join(appdata_path, "osu!", "rulesets"),
-    ]:
-        try:
-            p = os.path.join(d, LAZER_RULESET_FILENAME)
-            if os.path.isfile(p):
-                os.remove(p)
-        except Exception:
-            pass
-
-
 def setup_osu_lazer():
     local_path = os.path.join(os.getenv("LOCALAPPDATA") or "", "osulazer", "current", "osu!.exe")
 

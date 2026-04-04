@@ -1,4 +1,6 @@
 import os
+import sys
+import shutil
 import ctypes
 from ctypes import wintypes
 import platform
@@ -12,7 +14,6 @@ import datetime
 import json
 import winshell
 import psutil
-import ctypes
 from win32com.client import Dispatch
 from PySide6.QtWidgets import QMessageBox
 import m1pp_logger
@@ -35,13 +36,33 @@ def setuplog(level, text):
         case _:
             logger.info(text)
 
+def resource_path(relative_path: str) -> str:
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+def _copy_file(src_rel: str, dst_path: str):
+    src = resource_path(src_rel)
+    os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+    shutil.copy2(src, dst_path)
+
+def _copy_dir(src_rel: str, dst_dir: str):
+    src = resource_path(src_rel)
+    os.makedirs(dst_dir, exist_ok=True)
+    shutil.copytree(src, dst_dir, dirs_exist_ok=True)
+
 def check_osu_install_path():
     setuplog(0, "Checking osu! install path...")
     if platform.system() == "Windows":
         try:
-            aKey = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
-                                  r"Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
-                                  0, winreg.KEY_ALL_ACCESS)
+            aKey = winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+                0,
+                winreg.KEY_ALL_ACCESS
+            )
             i = 0
             while True:
                 try:
@@ -97,6 +118,7 @@ def make_shortcut(target, path, wDir, icon):
         setuplog(2, f"Failed to create shortcut ({path}): {e}")
 
 async def install_osu(m1pppath, osupath, curbar, curtext):
+    setuplog(0, f"crossinstallutil path: {__file__}")
     setuplog(0, "Starting installation process...")
 
     try:
@@ -127,14 +149,13 @@ async def install_osu(m1pppath, osupath, curbar, curtext):
                                 except Exception as e:
                                     setuplog(3, f"Write error ({destination_file}): {e}")
                                     return False
+
                 total_files += 1
-               #bug fix 2 | normalizes progress now | I want to note, byte math alone is not the issue this is also more of a finalization gap issue
-               #(pretty much means where the UI has no further progress updates while it does mklink.registry.shortcuts, bla bla bla.) dw though I did also fix that.
                 percent = (total_files / filelen) * 0.5
                 curbar.setProperty("value", percent)
                 setuplog(0, f"Downloaded {destination_file} ({percent*100:.1f}%)")
                 await asyncio.sleep(0)
-        #keep in mind I did change latest/ to v4B.
+
         async with aiohttp.ClientSession() as session:
             chunkstotal = 0
             url = "https://4ayo.ovh/m1pposu/files/launcher/latest/v4B/m1pplauncher.exe"
@@ -154,7 +175,6 @@ async def install_osu(m1pppath, osupath, curbar, curtext):
                     totalsize_int = 0
 
                 async with aiofiles.open(destination_file, 'wb') as f:
-                    #fixed this as well because chunkstotal += 1024 is just wrong
                     async for chunk in response.content.iter_chunked(1024):
                         if chunk:
                             try:
@@ -169,6 +189,17 @@ async def install_osu(m1pppath, osupath, curbar, curtext):
                             except Exception as e:
                                 setuplog(3, f"Write error (launcher): {e}")
                                 return False
+
+        try:
+            _copy_file("gui.qml", os.path.join(m1pppath, "gui.qml"))
+            _copy_file("icon.png", os.path.join(m1pppath, "icon.png"))
+            _copy_file("fade.png", os.path.join(m1pppath, "fade.png"))
+            _copy_file("unknown.png", os.path.join(m1pppath, "unknown.png"))
+            _copy_dir("slides", os.path.join(m1pppath, "slides"))
+            _copy_dir("font", os.path.join(m1pppath, "font"))
+            setuplog(0, "Copied UI assets (gui/slides/font) into install directory.")
+        except Exception as e:
+            setuplog(2, f"Failed copying UI assets: {e}")
 
         curtext.setProperty("text", "Finalizing: preparing...\n\n")
         curbar.setProperty("value", 0.96)
@@ -187,10 +218,9 @@ async def install_osu(m1pppath, osupath, curbar, curtext):
         db_link = os.path.join(m1pppath, "osu!.db")
         db_target = os.path.join(osupath, "osu!.db")
 
-        #collections + settings bc you never added them XD.
         collections_link = os.path.join(m1pppath, "collection.db")
         collections_target = os.path.join(osupath, "collection.db")
-        
+
         username = os.environ.get("USERNAME", "").strip()
         user_cfg_name = f"osu!.{username}.cfg" if username else "osu!.cfg"
 
@@ -257,16 +287,19 @@ async def install_osu(m1pppath, osupath, curbar, curtext):
         await asyncio.sleep(0)
 
         try:
-            make_shortcut(m1pppath + r"\m1pplauncher.exe",
-                          desktop + r"\M1PP Launcher.lnk",
-                          m1pppath,
-                          m1pppath + r"\m1pplauncher.exe,0")
+            make_shortcut(
+                m1pppath + r"\m1pplauncher.exe",
+                desktop + r"\M1PP Launcher.lnk",
+                m1pppath,
+                m1pppath + r"\m1pplauncher.exe,0"
+            )
 
-            make_shortcut(m1pppath + r"\m1pplauncher.exe",
-                          startmenu + r"\M1PP Launcher.lnk",
-                          m1pppath,
-                          m1pppath + r"\m1pplauncher.exe,0")
-
+            make_shortcut(
+                m1pppath + r"\m1pplauncher.exe",
+                startmenu + r"\M1PP Launcher.lnk",
+                m1pppath,
+                m1pppath + r"\m1pplauncher.exe,0"
+            )
         except Exception as e:
             setuplog(2, f"Shortcut creation failed: {e}")
 

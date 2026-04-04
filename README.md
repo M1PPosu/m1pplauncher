@@ -100,5 +100,11 @@ Stable routing is the classic devserver approach:
 
 ```txt
 osu!.exe -devserver <domain>
+```
 
 Please note, to join a "custom" stable server all you have to do is enable the "Custom Server" feature in settings, then input the domain e.g. sunrise.uk
+
+## Building From Source
+
+The authoritative launcher build path is `build.bat` at the repo root.
+It builds `m1ppupdater.exe` first, embeds it into the launcher, and writes `m1pplauncher.exe` to `dist\launcher\`.

@@ -1,7 +1,6 @@
 import sys
 import os
 import json
-import time
 import ctypes
 import shutil
 import tempfile
@@ -14,7 +13,6 @@ import winreg
 import psutil
 import requests
 import qasync
-import winshell
 
 import util
 import bootstrap
@@ -26,7 +24,6 @@ from PySide6.QtGui import QIcon
 from PySide6.QtCore import (
     QObject,
     QUrl,
-    QTimer,
     Signal,
     Property,
     Slot,
@@ -39,8 +36,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 LOCAL_VERSION = "v4B"
 DISCORD_CLIENT_ID = "1460103326560682137"
 
-m1pp_logger.setup("launcher")
-_log = m1pp_logger.get_logger("launcher")
+_log = logging.getLogger("launcher")
 
 LOCALAPPDATA = os.environ.get("LOCALAPPDATA") or ""
 UNINSTALL_SIGNAL = (
@@ -173,6 +169,8 @@ def uninstall():
             _log.warning("Registry cleanup error: %s", e)
 
         try:
+            import winshell
+
             desktop = winshell.desktop()
             startmenu = winshell.start_menu()
             for path in (
@@ -280,57 +278,6 @@ class _ConsoleLogHandler(logging.Handler):
             pass
 
 
-class LogTail(QObject):
-    textChanged = Signal()
-
-    def __init__(self, log_path: str, parent=None, max_chars: int = 200000):
-        super().__init__(parent)
-        self._log_path = log_path or ""
-        self._text = ""
-        self._pos = 0
-        self._max_chars = max_chars
-
-        self._timer = QTimer(self)
-        self._timer.setInterval(250)
-        self._timer.timeout.connect(self._tick)
-
-    @Property(str, notify=textChanged)
-    def text(self) -> str:
-        return self._text
-
-    @Slot()
-    def start(self):
-        if not self._timer.isActive():
-            self._timer.start()
-        self._tick()
-
-    def _tick(self):
-        try:
-            if not self._log_path or not os.path.isfile(self._log_path):
-                return
-
-            with open(self._log_path, "rb") as f:
-                f.seek(0, os.SEEK_END)
-                end = f.tell()
-                if self._pos > end:
-                    self._pos = 0
-                f.seek(self._pos, os.SEEK_SET)
-                chunk = f.read()
-                self._pos = end
-
-            if not chunk:
-                return
-
-            self._text += chunk.decode("utf-8", errors="replace")
-
-            if len(self._text) > self._max_chars:
-                self._text = self._text[-self._max_chars :]
-
-            self.textChanged.emit()
-        except Exception:
-            return
-
-
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -344,11 +291,7 @@ class MainWindow(QMainWindow):
             self.isonline = "Offline"
 
     def _presence_target(self):
-        custom_on = False
-        try:
-            custom_on = (util.config_read_value("id111") != 0)
-        except Exception:
-            custom_on = False
+        custom_on = (util.config_read_value("id111") != 0)
 
         if custom_on and self.root_obj is not None:
             inp = self.root_obj.findChild(QObject, "serverinp")
@@ -394,8 +337,6 @@ class MainWindow(QMainWindow):
         settings, id0, id1, id11, id111 = util.config_setup()
 
         for name, value in settings.items():
-            if name == "id10":
-                continue
             obj = self.root_obj.findChild(QObject, name)
             if obj is not None:
                 obj.setProperty("checked", value)
@@ -596,6 +537,14 @@ class MainWindow(QMainWindow):
             self._presence_idle()
             return
 
+        if index == 11:
+            for name in ("dbg", "dbg1", "dbg2"):
+                obj = self.root_obj.findChild(QObject, name) if self.root_obj is not None else None
+                if obj is not None:
+                    obj.setProperty("visible", bool(status))
+            util.config_set_value("id11", status)
+            return
+
         if index == 0:
             util.config_set_value("id0", status)
             return
@@ -628,6 +577,14 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     try:
+        if sys.stdout is None:
+            sys.stdout = open(os.devnull, "w", encoding="utf-8", errors="ignore")
+        if sys.stderr is None: 
+            sys.stderr = open(os.devnull, "w", encoding="utf-8", errors="ignore")
+            
+        m1pp_logger.setup("launcher")
+        _log = m1pp_logger.get_logger("launcher")
+        
         if len(sys.argv) > 1 and sys.argv[1].lower() == "uninstall":
             uninstall()
             sys.exit(0)
@@ -635,7 +592,7 @@ if __name__ == "__main__":
         if os.path.exists(UNINSTALL_SIGNAL):
             uninstall()
             sys.exit(0)
-
+            
         app = QApplication(sys.argv)
         app.setWindowIcon(QIcon(util.resource_path("icon.png")))
 
@@ -678,9 +635,6 @@ if __name__ == "__main__":
             except Exception:
                 pass
 
-        logTail = LogTail(m1pp_logger.get_log_path("launcher"))
-        engine.rootContext().setContextProperty("logTail", logTail)
-        engine.rootContext().setContextProperty("logtail", logTail)
         engine.rootContext().setContextProperty("consoleOut", consoleOut)
 
         try:
@@ -711,8 +665,6 @@ if __name__ == "__main__":
         else:
             _show_error("Failed to load gui.qml", f"QML path:\n{qml_path}")
             raise SystemExit(1)
-
-        logTail.start()
 
         with loop:
             loop.run_forever()
