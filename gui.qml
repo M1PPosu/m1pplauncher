@@ -202,7 +202,7 @@ ApplicationWindow {
                     Text {
                         anchors.centerIn: parent
                         text: labelRow.label.charAt(index)
-                        color: "#111111"
+                        color: "#ffffff"
                         font.family: app.launchFontFamily
                         font.pixelSize: 30
                         font.weight: 1000

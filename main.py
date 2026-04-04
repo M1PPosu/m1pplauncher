@@ -12,7 +12,6 @@ import winreg
 
 import psutil
 import requests
-import qasync
 
 import util
 import bootstrap
@@ -32,6 +31,9 @@ from PySide6.QtCore import (
 )
 from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 from PySide6.QtQml import QQmlApplicationEngine
+
+os.environ.setdefault("QT_API", "pyside6")
+import qasync
 
 LOCAL_VERSION = "v4B"
 DISCORD_CLIENT_ID = "1460103326560682137"
