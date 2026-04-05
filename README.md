@@ -9,8 +9,9 @@
   <h1>M1PP Launcher</h1>
 
   <p>
-    Windows launcher for connecting to <b>osu!stable</b> & <b>osu!lazer</b> private servers
-    with optional mod tooling, an updater, logs, and
+    Windows launcher for <b>M1PP</b> / <b>M1Lazer</b> private osu! servers,
+    with routing for <b>osu!stable</b> and <b>osu!lazer</b>, optional mod tooling,
+    an updater, logs, and
     Discord Rich Presence.
   </p>
 
@@ -41,8 +42,8 @@
   </p>
 
   <p>
-    <b style="color: #ff4d4d;">EARLY BETA:</b> Expect bugs. If something breaks,
-    logs + a short repro go a long way.
+    <b style="color: #ff4d4d;">EARLY BETA:</b> Stability is still in progress.
+    If something breaks, include logs and a short repro.
   </p>
 </div>
 
@@ -52,21 +53,21 @@
 
 - Stable routing: launches `osu!.exe -devserver <domain>`
 - Lazer routing: launches `osu!.exe --api-url=<host> --website-url=<host>`
-- Custom server routing: **osu!stable only** (no custom lazer routing)
-- Beatmap Discord RPC requires telemetry (tosu). Stable uses `/json`, lazer uses `/json/v2`
+- Custom server routing: **osu!stable only**
+- Beatmap Discord RPC uses tosu telemetry: stable reads `/json`, lazer reads `/json/v2`
 
 ---
 
 ## What this is (and what it isn’t)
 
-M1PP Launcher exists to make connecting to **M1PPosu / M1Lazer** painless:
+M1PP Launcher is the Windows desktop launcher for **M1PP / M1Lazer**.
 
-- One UI, two clients, correct routing every time
-- Optional mods (built-in + custom `.mmod`)
-- Built-in updater and logs for support
+- It routes both **osu!stable** and **osu!lazer** to the correct server endpoints
+- It supports built-in mods and custom `.mmod` packages
+- It includes an updater, logging, and Discord Rich Presence
 
-It’s a community launcher for community servers.  
-It is **not affiliated with ppy** and it is **not for Bancho**.
+It is **not affiliated with ppy**.  
+It is **not intended for Bancho**.
 
 ---
 
@@ -85,8 +86,8 @@ It is **not affiliated with ppy** and it is **not for Bancho**.
   </tr>
   <tr>
     <td><b>3</b></td>
-    <td>Open M1PP Launcher → pick client → <b>LAUNCH</b></td>
-    <td>That’s it</td>
+    <td>Open M1PP Launcher → pick a client → <b>LAUNCH</b></td>
+    <td>Routing is handled by the launcher</td>
   </tr>
 </table>
 
@@ -96,15 +97,15 @@ It is **not affiliated with ppy** and it is **not for Bancho**.
 
 ### osu!stable
 
-Stable routing is the classic devserver approach:
+Stable routing uses the standard devserver launch argument:
 
 ```txt
 osu!.exe -devserver <domain>
 ```
 
-Please note, to join a "custom" stable server all you have to do is enable the "Custom Server" feature in settings, then input the domain e.g. sunrise.uk
+For a custom stable server, enable the **Custom Server** option in Settings and enter the target domain, for example `sunrise.uk`.
 
 ## Building From Source
 
-The authoritative launcher build path is `build.bat` at the repo root.
-It builds `m1ppupdater.exe` first, embeds it into the launcher, and writes `m1pplauncher.exe` to `dist\launcher\`.
+The authoritative Windows build path is `build.bat` at the repo root.
+It builds `m1ppupdater.exe` first, bundles it into the launcher, and writes `m1pplauncher.exe` to `dist\launcher\`.
