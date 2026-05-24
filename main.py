@@ -1,220 +1,107 @@
-import sys
-import os
-import json
-import ctypes
-import shutil
-import tempfile
 import asyncio
+import json
 import logging
+import os
+import shutil
 import subprocess
+import sys
+import tempfile
 import webbrowser
-import winreg
 
 import psutil
 import requests
 
-import util
 import bootstrap
 import m1pp_logger
+import util
 from discord_presence import DiscordPresence
 
-from ctypes import wintypes
+from PySide6.QtCore import QObject, Property, QUrl, QtMsgType, Signal, Slot, qInstallMessageHandler
 from PySide6.QtGui import QIcon
-from PySide6.QtCore import (
-    QObject,
-    QUrl,
-    Signal,
-    Property,
-    Slot,
-    QtMsgType,
-    qInstallMessageHandler,
-)
-from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 
 os.environ.setdefault("QT_API", "pyside6")
 import qasync
 
-LOCAL_VERSION = "v4B"
+LOCAL_VERSION = "v4b"
 DISCORD_CLIENT_ID = "1460103326560682137"
+LOCALAPPDATA = os.environ.get("LOCALAPPDATA") or ""
 
 _log = logging.getLogger("launcher")
 
-LOCALAPPDATA = os.environ.get("LOCALAPPDATA") or ""
-UNINSTALL_SIGNAL = (
-    os.path.join(LOCALAPPDATA, "uninstall_pending.txt")
-    if LOCALAPPDATA
-    else os.path.join(tempfile.gettempdir(), "m1pp_uninstall_pending.txt")
-)
 
 def _qobj_text(obj: QObject) -> str:
     if obj is None:
         return ""
-    try:
-        v = obj.property("text")
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    except Exception:
-        pass
-    try:
-        v = obj.property("displayText")
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    except Exception:
-        pass
+
+    value = obj.property("text")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+
+    value = obj.property("displayText")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+
     return ""
+
 
 def _sanitize_host(value: str) -> str:
     s = (value or "").strip()
     if not s:
         return ""
-    s = s.replace("https://", "", 1).replace("http://", "", 1).strip().rstrip("/")
-    return s
+
+    return s.replace("https://", "", 1).replace("http://", "", 1).rstrip("/")
 
 
-def _show_error(title: str, body: str):
-    try:
-        QMessageBox.critical(None, title, body)
-    except Exception:
-        pass
+def _show_error(title: str, body: str) -> None:
+    QMessageBox.critical(None, title, body)
 
-def is_admin() -> bool:
-    try:
-        return bool(ctypes.windll.shell32.IsUserAnAdmin())
-    except Exception:
-        return False
+
+def _read_json(path: str) -> dict:
+    if not path or not os.path.isfile(path):
+        return {}
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    return data if isinstance(data, dict) else {}
 
 
 def _read_installdata_safe() -> dict:
-    candidates = [
+    paths = [
         os.path.join(util.get_app_path(), "installdata.json"),
-        util.resource_path("installdata.json"),
         os.path.join(LOCALAPPDATA, "M1PPLauncher", "installdata.json") if LOCALAPPDATA else "",
     ]
 
-    for path in candidates:
+    for path in paths:
         try:
-            if path and os.path.isfile(path):
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                if isinstance(data, dict):
-                    return data
-        except Exception:
-            pass
+            data = _read_json(path)
+        except (OSError, json.JSONDecodeError) as e:
+            _log.warning("Failed reading installdata.json at %s: %s", path, e)
+            continue
 
-    return {}
+        if data:
+            data.setdefault("m1pppath", "")
+            data.setdefault("osupath", "")
+            return data
+
+    return {"m1pppath": "", "osupath": ""}
 
 
-def uninstall():
-    if not is_admin():
-        try:
-            with open(UNINSTALL_SIGNAL, "w", encoding="utf-8") as f:
-                f.write("uninstall")
-        except Exception as e:
-            _log.warning("Failed to write uninstall signal: %s", e)
+def _mods_path() -> str:
+    path = os.path.join(util.get_app_path(), "mods")
+    os.makedirs(path, exist_ok=True)
+    return path
 
-        try:
-            if getattr(sys, "frozen", False):
-                exe = sys.executable
-                params = ""
-            else:
-                exe = sys.executable
-                params = subprocess.list2cmdline([os.path.abspath(__file__)])
-            ctypes.windll.shell32.ShellExecuteW(None, "runas", exe, params, None, 1)
-        except Exception as e:
-            _log.error("Failed to elevate: %s", e)
 
-        sys.exit(0)
+def _valid_osu_path(path: str) -> bool:
+    return bool(path) and os.path.isfile(os.path.join(path, "osu!.exe"))
 
-    try:
-        data = _read_installdata_safe()
-        mipath = data.get("m1pppath")
 
-        if not mipath or not os.path.isdir(mipath):
-            _log.warning("Uninstall aborted: m1pppath missing/invalid in installdata.json")
-            try:
-                os.remove(UNINSTALL_SIGNAL)
-            except Exception:
-                pass
-            sys.exit(0)
+def _open_url(url: str) -> None:
+    webbrowser.open(url)
 
-        for proc in psutil.process_iter(attrs=["name"]):
-            try:
-                if (proc.info.get("name") or "").lower() == "tosu.exe":
-                    proc.kill()
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
-
-        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        k32.DeleteFileW.argtypes = [wintypes.LPCWSTR]
-        k32.RemoveDirectoryW.argtypes = [wintypes.LPCWSTR]
-
-        try:
-            k32.DeleteFileW(os.path.join(mipath, "osu!.db"))
-        except Exception:
-            pass
-        try:
-            k32.RemoveDirectoryW(os.path.join(mipath, "Songs"))
-        except Exception:
-            pass
-        try:
-            k32.RemoveDirectoryW(os.path.join(mipath, "Skins"))
-        except Exception:
-            pass
-
-        uninstall_key = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\M1PPLauncher"
-        try:
-            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, uninstall_key)
-        except FileNotFoundError:
-            pass
-        except OSError as e:
-            _log.warning("Registry cleanup error: %s", e)
-
-        try:
-            import winshell
-
-            desktop = winshell.desktop()
-            startmenu = winshell.start_menu()
-            for path in (
-                os.path.join(desktop, "M1PP Launcher.lnk"),
-                os.path.join(startmenu, "M1PP Launcher.lnk"),
-            ):
-                if os.path.exists(path):
-                    os.remove(path)
-        except Exception:
-            pass
-
-        pid = os.getpid()
-
-        try:
-            os.remove(UNINSTALL_SIGNAL)
-        except Exception:
-            pass
-
-        updater_src = util.resource_path("m1ppupdater.exe")
-        temp_dir = tempfile.mkdtemp(prefix="m1pp_uninstaller_")
-        updater_dst = os.path.join(temp_dir, "m1ppupdater.exe")
-        shutil.copy2(updater_src, updater_dst)
-
-        ctypes.windll.shell32.ShellExecuteW(
-            None,
-            "runas",
-            updater_dst,
-            f'finishuninstall {pid} "{mipath}"',
-            None,
-            1,
-        )
-
-    except Exception as e:
-        _log.exception("FATAL uninstall error: %s", e)
-
-    finally:
-        try:
-            os.remove(UNINSTALL_SIGNAL)
-        except Exception:
-            pass
-
-    sys.exit(0)
 
 class ConsoleOut(QObject):
     textChanged = Signal()
@@ -230,54 +117,47 @@ class ConsoleOut(QObject):
     def text(self) -> str:
         return self._text
 
-    def append(self, s: str):
-        if not s:
-            return
-        self._appendRequested.emit(str(s))
+    def append(self, text: str) -> None:
+        if text:
+            self._appendRequested.emit(str(text))
 
     @Slot(str)
-    def _append(self, s: str):
-        self._text += s
+    def _append(self, text: str) -> None:
+        self._text += text
         if len(self._text) > self._max:
             self._text = self._text[-self._max :]
         self.textChanged.emit()
 
 
-class _TeeStream:
+class TeeStream:
     def __init__(self, console: ConsoleOut, original):
         self._console = console
         self._original = original
 
-    def write(self, s):
-        try:
-            if self._original:
-                self._original.write(s)
-        except Exception:
-            pass
-        try:
-            self._console.append(s)
-        except Exception:
-            pass
+    def write(self, text):
+        if self._original:
+            try:
+                self._original.write(text)
+            except Exception:
+                pass
+        self._console.append(text)
 
     def flush(self):
-        try:
-            if self._original:
+        if self._original:
+            try:
                 self._original.flush()
-        except Exception:
-            pass
+            except Exception:
+                pass
 
 
-class _ConsoleLogHandler(logging.Handler):
+class ConsoleLogHandler(logging.Handler):
     def __init__(self, console: ConsoleOut):
         super().__init__(level=logging.DEBUG)
         self._console = console
         self.setFormatter(logging.Formatter("(%(asctime)s) [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
 
     def emit(self, record):
-        try:
-            self._console.append(self.format(record) + "\n")
-        except Exception:
-            pass
+        self._console.append(self.format(record) + "\n")
 
 
 class MainWindow(QMainWindow):
@@ -292,48 +172,16 @@ class MainWindow(QMainWindow):
         except requests.RequestException:
             self.isonline = "Offline"
 
-    def _presence_target(self):
-        custom_on = (util.config_read_value("id111") != 0)
-
-        if custom_on and self.root_obj is not None:
-            inp = self.root_obj.findChild(QObject, "serverinp")
-            server = _sanitize_host(_qobj_text(inp))
-            if server:
-                return (server, "osu", "Custom server")
-            return ("Custom server", "osu", "Custom server")
-
-        svst = self.root_obj.findChild(QObject, "serversel") if self.root_obj is not None else None
-        idx = svst.property("currentIndex") if svst is not None else 0
-
-        if idx == 1:
-            return ("M1Lazer", "m1lazerlogo_1_", "M1Lazer")
-        return ("M1PP Stable", "m1ppweblogo", "M1PP")
-
-    def _presence_idle(self):
-        if not self.presence:
-            return
-        label, img, img_text = self._presence_target()
-        self.presence.set_idle(label, img, img_text)
-
-    def _presence_launching(self):
-        if not self.presence:
-            return
-        label, img, img_text = self._presence_target()
-        self.presence.set_launching(label, img, img_text)
-
-    def _presence_playing(self):
-        if not self.presence:
-            return
-        label, img, img_text = self._presence_target()
-        self.presence.set_playing(label, img, img_text)
-
     def set_qml_root(self, root):
         self.root_obj = root
 
         try:
             self.updatenews()
-        except Exception as e:
+        except requests.RequestException as e:
             _log.warning("News update error: %s", e)
+            self.isonline += " (Disconnected)"
+        except (OSError, json.JSONDecodeError) as e:
+            _log.warning("News parse error: %s", e)
             self.isonline += " (Disconnected)"
 
         settings, id0, id1, id11, id111 = util.config_setup()
@@ -343,100 +191,177 @@ class MainWindow(QMainWindow):
             if obj is not None:
                 obj.setProperty("checked", value)
 
-        sel = self.root_obj.findChild(QObject, "serversel")
-        inp = self.root_obj.findChild(QObject, "serverinp")
-        if sel is not None and inp is not None:
-            if id111 == 0:
-                inp.setProperty("visible", False)
-                sel.setProperty("visible", True)
-            else:
-                inp.setProperty("visible", True)
-                sel.setProperty("visible", False)
-
-        dbg = self.root_obj.findChild(QObject, "dbg")
-        dbg1 = self.root_obj.findChild(QObject, "dbg1")
-        dbg2 = self.root_obj.findChild(QObject, "dbg2")
-        if dbg is not None and dbg1 is not None and dbg2 is not None:
-            if id11 == 0:
-                dbg.setProperty("visible", False)
-                dbg1.setProperty("visible", False)
-                dbg2.setProperty("visible", False)
-            else:
-                dbg.setProperty("visible", True)
-                dbg1.setProperty("visible", True)
-                dbg2.setProperty("visible", True)
-
+        self._apply_custom_server_visibility(id111)
+        self._apply_debug_visibility(id11)
         self.update_info_stats()
         self._presence_idle()
 
+    def _apply_custom_server_visibility(self, enabled: int) -> None:
+        if self.root_obj is None:
+            return
+
+        sel = self.root_obj.findChild(QObject, "serversel")
+        inp = self.root_obj.findChild(QObject, "serverinp")
+
+        if sel is not None:
+            sel.setProperty("visible", enabled == 0)
+            sel.setProperty("currentIndex", 0)
+
+        if inp is not None:
+            inp.setProperty("visible", enabled != 0)
+
+    def _apply_debug_visibility(self, enabled: int) -> None:
+        if self.root_obj is None:
+            return
+
+        for name in ("dbg", "dbg1", "dbg2"):
+            obj = self.root_obj.findChild(QObject, name)
+            if obj is not None:
+                obj.setProperty("visible", bool(enabled))
+
+    def _presence_target(self):
+        if util.config_read_value("id111") != 0 and self.root_obj is not None:
+            inp = self.root_obj.findChild(QObject, "serverinp")
+            server = _sanitize_host(_qobj_text(inp))
+            if server:
+                return (server, "osu", "Custom server")
+            return ("Custom server", "osu", "Custom server")
+
+        return ("M1PP Stable", "m1ppweblogo", "M1PP")
+
+    def _presence_idle(self):
+        if self.presence:
+            label, img, img_text = self._presence_target()
+            self.presence.set_idle(label, img, img_text)
+
+    def _presence_launching(self):
+        if self.presence:
+            label, img, img_text = self._presence_target()
+            self.presence.set_launching(label, img, img_text)
+
+    def _presence_playing(self):
+        if self.presence:
+            label, img, img_text = self._presence_target()
+            self.presence.set_playing(label, img, img_text)
+
     def updatenews(self):
         recv = requests.get("https://4ayo.ovh/m1pposu/news/news.json", timeout=2).json()
-        arrx = _read_installdata_safe()
+        remote_version = str(recv.get("current_version") or "").strip()
 
-        if recv.get("current_version", "").strip() != LOCAL_VERSION:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Question)
-            msg.setText(
-                f'New version of M1PPLauncher has been released! Would you like to download it? ({recv.get("current_version","")})'
-            )
-            msg.setWindowTitle("Update available!")
-            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-            msg.setDefaultButton(QMessageBox.Yes)
+        if not remote_version.lower().startswith("v"):
+            return
 
-            if msg.exec() == QMessageBox.Yes:
-                updater_src = util.resource_path("m1ppupdater.exe")
-                temp_dir = tempfile.mkdtemp(prefix="m1pp_updater_")
-                updater_dst = os.path.join(temp_dir, "m1ppupdater.exe")
-                shutil.copy2(updater_src, updater_dst)
+        if remote_version.lower() == LOCAL_VERSION:
+            return
 
-                m1pppath = arrx.get("m1pppath", "")
-                ctypes.windll.shell32.ShellExecuteW(None, "runas", updater_dst, f'"{m1pppath}"', None, 1)
-                sys.exit(0)
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setText(f"New version of M1PP Launcher has been released. Download it now? ({remote_version})")
+        msg.setWindowTitle("Update available")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.setDefaultButton(QMessageBox.Yes)
+
+        if msg.exec() != QMessageBox.Yes:
+            return
+
+        updater_src = util.resource_path("m1ppupdater.exe")
+        if not os.path.isfile(updater_src):
+            raise FileNotFoundError(updater_src)
+
+        temp_dir = tempfile.mkdtemp(prefix="m1pp_updater_")
+        updater_dst = os.path.join(temp_dir, "m1ppupdater.exe")
+        shutil.copy2(updater_src, updater_dst)
+
+        target_dir = util.get_app_path()
+        subprocess.Popen([updater_dst, target_dir], cwd=temp_dir)
+        QApplication.instance().quit()
 
     def update_info_stats(self):
         if self.root_obj is None:
             return
 
-        configdata = _read_installdata_safe()
         modsenabled = 0
-        customstatus = "Disabled"
+        customstatus = "Enabled" if util.config_read_value("id111") != 0 else "Disabled"
 
         if util.config_read_value("id0") == 1:
             modsenabled += 1
         if util.config_read_value("id1") == 1:
             modsenabled += 1
 
-        m1pppath = configdata.get("m1pppath")
-        if m1pppath and os.path.isdir(m1pppath):
-            mods_dir = os.path.join(m1pppath, "mods")
-            if os.path.isdir(mods_dir):
-                try:
-                    for ffile in os.listdir(mods_dir):
-                        if ffile.lower().endswith(".mmod"):
-                            modsenabled += 1
-                except Exception:
-                    pass
-
-        osuplatform = "Stable"
-        svst = self.root_obj.findChild(QObject, "serversel")
-        if svst is not None:
-            idx = svst.property("currentIndex")
-            if idx == 1:
-                osuplatform = "Lazer"
-
-        if util.config_read_value("id111") != 0:
-            osuplatform = "Stable"
-            customstatus = "Enabled"
+        try:
+            for file_name in os.listdir(_mods_path()):
+                if file_name.lower().endswith(".mmod"):
+                    modsenabled += 1
+        except OSError as e:
+            _log.warning("Failed reading mods folder: %s", e)
 
         statusbox = self.root_obj.findChild(QObject, "dbg")
         if statusbox is not None:
             statusbox.setProperty(
                 "text",
-                f"\n\nClient channel: {osuplatform}"
+                f"\n\nClient channel: Stable"
                 f"\nLoaded mods: {modsenabled}"
                 f"\nConnection: {self.isonline}"
                 f"\nCustom server: {customstatus}",
             )
+
+    def _selected_server(self) -> str:
+        if util.config_read_value("id111") == 0:
+            return "m1pposu.dev"
+
+        inp = self.root_obj.findChild(QObject, "serverinp") if self.root_obj is not None else None
+        server = _sanitize_host(_qobj_text(inp))
+
+        if not server or "." not in server or " " in server:
+            raise RuntimeError("Invalid custom server domain.")
+
+        if server.lower() in ("ppy.sh", "osu.ppy.sh"):
+            raise RuntimeError("Official Bancho servers are not supported by this launcher.")
+
+        return server
+
+    async def _launch_stable(self):
+        playbtn = self.root_obj.findChild(QObject, "playbtn") if self.root_obj is not None else None
+
+        try:
+            if playbtn is not None:
+                playbtn.setProperty("enabled", False)
+                playbtn.setProperty("text", "LOADING MODS")
+
+            data = _read_installdata_safe()
+            if not _valid_osu_path(str(data.get("osupath") or "")) and not _valid_osu_path(str(data.get("m1pppath") or "")):
+                raise RuntimeError("Could not find osu!.exe. Re-run setup and select your osu!stable folder.")
+
+            gameserver = self._selected_server()
+            _log.info("Bootstrapping stable client. server=%s", gameserver)
+
+            dismods = []
+            if util.config_read_value("id0") == 0:
+                dismods.append("RelaxPatcher")
+            if util.config_read_value("id1") == 0:
+                dismods.append("tosu")
+
+            mods = await asyncio.to_thread(bootstrap.load_mods, dismods, "stable")
+            if isinstance(mods, list):
+                raise RuntimeError(f"Mod loader failed for {mods[1]}: {mods[0]}")
+
+            if playbtn is not None:
+                playbtn.setProperty("text", "LAUNCHING")
+
+            self._presence_playing()
+            result = await asyncio.to_thread(bootstrap.launch_osu, gameserver, mods)
+
+            while result == 9:
+                result = await asyncio.to_thread(bootstrap.launch_osu, gameserver, mods)
+
+            if result == 1:
+                raise RuntimeError("Could not find osu!.exe. Re-run setup and select your osu!stable folder.")
+
+        finally:
+            if playbtn is not None:
+                playbtn.setProperty("enabled", True)
+                playbtn.setProperty("text", "LAUNCH")
+            self._presence_idle()
 
     @qasync.asyncSlot(int, int)
     async def execguifn(self, index, status):
@@ -448,232 +373,140 @@ class MainWindow(QMainWindow):
             return
 
         if index == 2137:
-            playbtn = None
             self._presence_launching()
-
             try:
-                platform = "stable"
-                gameserver = 10
-
-                if util.config_read_value("id111") != 0:
-                    inp = self.root_obj.findChild(QObject, "serverinp") if self.root_obj is not None else None
-                    server = _sanitize_host(_qobj_text(inp))
-                    if not server or "." not in server or " " in server:
-                        raise Exception("Invalid custom server domain.")
-                    gameserver = server
-                else:
-                    svst = self.root_obj.findChild(QObject, "serversel")
-                    idx = svst.property("currentIndex") if svst is not None else 0
-                    if idx == 1:
-                        gameserver = 20
-                        platform = "lazer"
-
-                _log.info("Bootstrapping...")
-                playbtn = self.root_obj.findChild(QObject, "playbtn") if self.root_obj is not None else None
-                if playbtn is not None:
-                    playbtn.setProperty("enabled", False)
-                    playbtn.setProperty("text", "LOADING MODS")
-
-                dismods = []
-                if util.config_read_value("id0") == 0:
-                    dismods.append("RelaxPatcher")
-                if util.config_read_value("id1") == 0:
-                    dismods.append("tosu")
-
-                mods = await asyncio.to_thread(bootstrap.load_mods, dismods, platform)
-
-                if isinstance(mods, list):
-                    msg = QMessageBox()
-                    msg.setIcon(QMessageBox.Critical)
-                    msg.setText(f"An error has occured during loading {mods[1]}\n\nError message: {mods[0]}")
-                    msg.setWindowTitle("Mod loader error")
-                    msg.exec()
-                else:
-                    if gameserver != 20:
-                        if gameserver == 10:
-                            gameserver = "m1pposu.dev"
-                        if playbtn is not None:
-                            playbtn.setProperty("text", "LAUNCHING")
-
-                        self._presence_playing()
-                        await asyncio.to_thread(bootstrap.launch_osu, gameserver, mods)
-                    else:
-                        if playbtn is not None:
-                            playbtn.setProperty("text", "LAUNCHING")
-
-                        self._presence_playing()
-                        await asyncio.to_thread(bootstrap.ensure_tosu_running, mods)
-                        await asyncio.to_thread(bootstrap.setup_osu_lazer)
-
-                if playbtn is not None:
-                    playbtn.setProperty("enabled", True)
-                    playbtn.setProperty("text", "LAUNCH")
-
-                self._presence_idle()
-
-            except Exception as ee:
-                _log.exception("Bootstrap error: %s", ee)
+                await self._launch_stable()
+            except Exception as e:
+                _log.exception("Bootstrap error: %s", e)
                 msg = QMessageBox()
                 msg.setIcon(QMessageBox.Critical)
-                msg.setText(f"An error occured during the bootstrap process of the game.\n\n{ee}")
+                msg.setText(f"An error occurred during launch.\n\n{e}")
                 msg.setWindowTitle("Error")
                 msg.exec()
-                if playbtn is not None:
-                    playbtn.setProperty("enabled", True)
-                    playbtn.setProperty("text", "LAUNCH")
                 self._presence_idle()
-
             return
 
         if index == 111:
-            sel = self.root_obj.findChild(QObject, "serversel")
-            inp = self.root_obj.findChild(QObject, "serverinp")
-            if sel is not None and inp is not None:
-                if status == 0:
-                    inp.setProperty("visible", False)
-                    sel.setProperty("visible", True)
-                else:
-                    inp.setProperty("visible", True)
-                    sel.setProperty("visible", False)
             util.config_set_value("id111", status)
+            self._apply_custom_server_visibility(status)
+            self.update_info_stats()
             self._presence_idle()
             return
 
         if index == 11:
-            for name in ("dbg", "dbg1", "dbg2"):
-                obj = self.root_obj.findChild(QObject, name) if self.root_obj is not None else None
-                if obj is not None:
-                    obj.setProperty("visible", bool(status))
             util.config_set_value("id11", status)
+            self._apply_debug_visibility(status)
             return
 
         if index == 0:
             util.config_set_value("id0", status)
+            self.update_info_stats()
             return
 
         if index == 1:
             util.config_set_value("id1", status)
+            self.update_info_stats()
             return
 
         if index == 6969:
-            configdata = _read_installdata_safe()
-            m1pppath = configdata.get("m1pppath")
-            if m1pppath and os.path.isdir(m1pppath):
-                subprocess.Popen(f'explorer "{os.path.join(m1pppath, "mods")}"')
-            else:
-                msg = QMessageBox()
-                msg.setIcon(QMessageBox.Critical)
-                msg.setText("Could not open mods folder because m1pppath is missing/invalid (installdata.json).")
-                msg.setWindowTitle("Error")
-                msg.exec()
+            subprocess.Popen(["explorer", _mods_path()])
             return
 
         if index == 990:
-            webbrowser.open("https://github.com/M1PPosu")
+            _open_url("https://github.com/M1PPosu/m1pplauncher")
             return
 
         if index == 991:
-            webbrowser.open("https://dsc.gg/m1ppand4ayo")
+            _open_url("https://discord.gg/RXQFFZx4ac")
             return
+
+
+def _ensure_standard_streams() -> None:
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8", errors="ignore")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8", errors="ignore")
+
+
+def _install_qt_message_handler(console: ConsoleOut) -> None:
+    def qt_msg_handler(mode, context, message):
+        level = {
+            QtMsgType.QtDebugMsg: "DEBUG",
+            QtMsgType.QtWarningMsg: "WARN",
+            QtMsgType.QtCriticalMsg: "CRITICAL",
+            QtMsgType.QtFatalMsg: "FATAL",
+        }.get(mode, "INFO")
+
+        console.append(f"[Qt {level}] {message}\n")
+
+    qInstallMessageHandler(qt_msg_handler)
+
+
+def main() -> int:
+    global _log
+
+    _ensure_standard_streams()
+
+    m1pp_logger.setup("launcher")
+    _log = m1pp_logger.get_logger("launcher")
+
+    app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon(util.resource_path("icon.png")))
+
+    console = ConsoleOut()
+    _log.addHandler(ConsoleLogHandler(console))
+
+    sys.stdout = TeeStream(console, sys.stdout)
+    sys.stderr = TeeStream(console, sys.stderr)
+
+    _install_qt_message_handler(console)
+
+    loop = qasync.QEventLoop(app)
+    asyncio.set_event_loop(loop)
+
+    engine = QQmlApplicationEngine()
+    window = MainWindow()
+
+    engine.rootContext().setContextProperty("window", window)
+    engine.rootContext().setContextProperty("consoleOut", console)
+
+    settings, id0, id1, id11, id111 = util.config_setup()
+    ctx = engine.rootContext()
+    ctx.setContextProperty("switch_patcher", bool(int(id0)))
+    ctx.setContextProperty("switch_tosu", bool(int(id1)))
+    ctx.setContextProperty("switch_launchinfo", bool(int(id11)))
+    ctx.setContextProperty("switch_hidelauncher", bool(int(id111)))
+
+    qml_path = util.resource_path("gui.qml")
+    engine.load(QUrl.fromLocalFile(qml_path))
+
+    if not engine.rootObjects():
+        _show_error("Failed to load gui.qml", f"QML path:\n{qml_path}")
+        return 1
+
+    window.set_qml_root(engine.rootObjects()[0])
+
+    window.presence = DiscordPresence.create(DISCORD_CLIENT_ID, _log)
+    if window.presence:
+        app.aboutToQuit.connect(window.presence.close)
+        window._presence_idle()
+
+    with loop:
+        loop.run_forever()
+
+    return 0
 
 
 if __name__ == "__main__":
     try:
-        if sys.stdout is None:
-            sys.stdout = open(os.devnull, "w", encoding="utf-8", errors="ignore")
-        if sys.stderr is None: 
-            sys.stderr = open(os.devnull, "w", encoding="utf-8", errors="ignore")
-            
-        m1pp_logger.setup("launcher")
-        _log = m1pp_logger.get_logger("launcher")
-        
-        if len(sys.argv) > 1 and sys.argv[1].lower() == "uninstall":
-            uninstall()
-            sys.exit(0)
-
-        if os.path.exists(UNINSTALL_SIGNAL):
-            uninstall()
-            sys.exit(0)
-            
-        app = QApplication(sys.argv)
-        app.setWindowIcon(QIcon(util.resource_path("icon.png")))
-
-        consoleOut = ConsoleOut()
-        _log.addHandler(_ConsoleLogHandler(consoleOut))
-
-        orig_out, orig_err = sys.stdout, sys.stderr
-        sys.stdout = _TeeStream(consoleOut, orig_out)
-        sys.stderr = _TeeStream(consoleOut, orig_err)
-
-        def _qt_msg_handler(mode, context, message):
-            try:
-                if mode == QtMsgType.QtDebugMsg:
-                    lvl = "DEBUG"
-                elif mode == QtMsgType.QtWarningMsg:
-                    lvl = "WARN"
-                elif mode == QtMsgType.QtCriticalMsg:
-                    lvl = "CRITICAL"
-                elif mode == QtMsgType.QtFatalMsg:
-                    lvl = "FATAL"
-                else:
-                    lvl = "INFO"
-                consoleOut.append(f"[Qt {lvl}] {message}\n")
-            except Exception:
-                pass
-
-        qInstallMessageHandler(_qt_msg_handler)
-
-        loop = qasync.QEventLoop(app)
-        asyncio.set_event_loop(loop)
-
-        engine = QQmlApplicationEngine()
-        window = MainWindow()
-        engine.rootContext().setContextProperty("window", window)
-
-        window.presence = DiscordPresence.create(DISCORD_CLIENT_ID, _log)
-        if window.presence:
-            try:
-                app.aboutToQuit.connect(window.presence.close)
-            except Exception:
-                pass
-
-        engine.rootContext().setContextProperty("consoleOut", consoleOut)
-
-        try:
-            settings_json, id0, id1, id11, id111 = util.config_setup()
-        except Exception:
-            settings_json, id0, id1, id11, id111 = (
-                {"id0": 1, "id1": 1, "id11": 1, "id111": 0},
-                1,
-                1,
-                1,
-                0,
-            )
-
-        ctx = engine.rootContext()
-        ctx.setContextProperty("switch_patcher", bool(int(id0)))
-        ctx.setContextProperty("switch_tosu", bool(int(id1)))
-        ctx.setContextProperty("switch_launchinfo", bool(int(id11)))
-        ctx.setContextProperty("switch_hidelauncher", bool(int(id111)))
-
-        external_qml = os.path.join(util.get_app_path(), "gui.qml")
-        qml_path = external_qml if os.path.isfile(external_qml) else util.resource_path("gui.qml")
-
-        engine.load(QUrl.fromLocalFile(qml_path))
-
-        if engine.rootObjects():
-            window.set_qml_root(engine.rootObjects()[0])
-            window._presence_idle()
-        else:
-            _show_error("Failed to load gui.qml", f"QML path:\n{qml_path}")
-            raise SystemExit(1)
-
-        with loop:
-            loop.run_forever()
-
+        raise SystemExit(main())
     except SystemExit:
         raise
     except Exception as e:
         _log.exception("Fatal startup crash: %s", e)
-        _show_error("Launcher crash", str(e))
-        raise
+        try:
+            _show_error("Launcher crash", str(e))
+        finally:
+            raise
+        
+# Could split this into 3 other files if REALLY needed. 

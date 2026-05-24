@@ -5,12 +5,10 @@ import shutil
 import subprocess
 import tempfile
 import time
-import urllib.request
 import zipfile
 from ctypes import windll
 from itertools import chain
 from threading import Thread
-from urllib.parse import urlparse
 
 import psutil
 import pyautogui
@@ -20,52 +18,108 @@ import m1pp_logger
 
 _log = m1pp_logger.get_logger("launcher")
 
-RULESET_URLS = [
-    "https://4ayo.ovh/m1pposu/files/authlib/authlibe.Rulesets.AuthlibInjection.dll",
-    "https://github.com/MingxuanGame/LazerAuthlibInjection/releases/download/v2025.1026.0/osu.Game.Rulesets.AuthlibInjection.dll",
-]
-
-LAZER_RULESET_FILENAME = "osu.Game.Rulesets.AuthlibInjection.dll"
-
 
 def messageerr(text):
     return windll.user32.MessageBoxW(0, text, "Error", 4112)
 
 
-def _normalize_host(url_or_host: str) -> str:
-    s = (url_or_host or "").strip()
-    if not s:
-        return s
-    if "://" in s:
-        u = urlparse(s)
-        return (u.netloc or "").strip()
-    return s.strip().rstrip("/")
+def _mods_path() -> str:
+    path = os.path.join(util.get_app_path(), "mods")
+    os.makedirs(path, exist_ok=True)
+    return path
 
 
-def _download(url: str, dest_path: str) -> None:
-    req = urllib.request.Request(url, headers={"User-Agent": "M1PPLauncher/4.0B"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        with open(dest_path, "wb") as f:
-            shutil.copyfileobj(resp, f)
+def _osu_launch_dir(configdata: dict) -> str:
+    for key in ("m1pppath", "osupath"):
+        path = str(configdata.get(key) or "")
+        if path and os.path.isfile(os.path.join(path, "osu!.exe")):
+            return path
+    return ""
+
+
+def _ensure_persistent_tool(exe_src: str, tool_name: str) -> tuple[str, str]:
+    base = os.path.join(os.getenv("LOCALAPPDATA") or tempfile.gettempdir(), "M1PPLauncher", "tools", tool_name)
+    os.makedirs(base, exist_ok=True)
+
+    exe_dst = os.path.join(base, os.path.basename(exe_src))
+
+    if not os.path.isfile(exe_dst) or os.path.getsize(exe_dst) != os.path.getsize(exe_src):
+        shutil.copy2(exe_src, exe_dst)
+
+    return exe_dst, base
+
+
+def _is_process_running(name_lower: str) -> bool:
+    for proc in psutil.process_iter(["name"]):
+        if (proc.info.get("name") or "").lower() == name_lower:
+            return True
+    return False
+
+
+def _find_tosu_exe(mods) -> str:
+    if not isinstance(mods, dict):
+        return ""
+
+    for mod_path, mod in mods.items():
+        name = str(mod.get("name") or "").lower()
+        payload = mod.get("payload") or {}
+        exe = str(payload.get("executable") or "")
+        exe_name = os.path.basename(exe).lower()
+
+        if name == "tosu" or exe_name == "tosu.exe":
+            return os.path.join(mod_path, exe)
+
+    return ""
+
+
+def _spawn_logged_tosu(exe_path: str, run_cwd: str, startupinfo) -> None:
+    proc = subprocess.Popen(
+        [exe_path],
+        cwd=run_cwd,
+        startupinfo=startupinfo,
+        shell=False,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    def log_pipe():
+        if proc.stdout is None:
+            return
+
+        for line in iter(proc.stdout.readline, b""):
+            if not line:
+                break
+            _log.info("[tosu] %s", line.decode("utf-8", errors="replace").rstrip())
+
+    Thread(target=log_pipe, daemon=True).start()
+
+
+def _kill_by_name(name_lower: str) -> None:
+    for proc in psutil.process_iter(["name"]):
+        if (proc.info.get("name") or "").lower() != name_lower:
+            continue
+
+        try:
+            proc.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
 
 
 def load_mods(skipmods, osuplatform):
-    configdata = util.get_configdata()
-    modspath = os.path.join(configdata["m1pppath"], "mods")
-    os.makedirs(modspath, exist_ok=True)
-
+    modspath = _mods_path()
     moddata = {}
     existingmods = []
     conflicts = []
 
-    for mod in chain.from_iterable(
-        glob.iglob(path)
-        for path in [
-            f'{util.resource_path("builtinmods")}/*.mmod',
-            f"{modspath}/*.mmod",
-        ]
-    ):
+    mod_patterns = [
+        f'{util.resource_path("builtinmods")}/*.mmod',
+        f"{modspath}/*.mmod",
+    ]
+
+    for mod in chain.from_iterable(glob.iglob(path) for path in mod_patterns):
         temp_dir_path = tempfile.mkdtemp(prefix="m1ppmod_")
+
         try:
             with zipfile.ZipFile(mod, "r") as zip_ref:
                 zip_ref.extractall(temp_dir_path)
@@ -82,17 +136,13 @@ def load_mods(skipmods, osuplatform):
                 continue
 
             if name_lower != "tosu":
-                if data.get("osuplatform") == "lazer" and osuplatform != "lazer":
+                target_platform = data.get("osuplatform")
+                if target_platform == "lazer" and osuplatform != "lazer":
                     shutil.rmtree(temp_dir_path, ignore_errors=True)
                     continue
-
-                if data.get("osuplatform") == "stable" and osuplatform != "stable":
+                if target_platform == "stable" and osuplatform != "stable":
                     shutil.rmtree(temp_dir_path, ignore_errors=True)
                     continue
-
-            existingmods.append(name)
-            conflicts.extend(data.get("conflicts", []))
-            moddata[temp_dir_path] = data
 
             expected_keys = {
                 "name",
@@ -112,18 +162,22 @@ def load_mods(skipmods, osuplatform):
             missing_keys = expected_keys - data.keys()
             unexpected_keys = data.keys() - expected_keys
 
-            payload_missing = set()
-            payload_unexpected = set()
-            if "payload" in data and isinstance(data["payload"], dict):
-                payload_missing = expected_payload_keys - data["payload"].keys()
-                payload_unexpected = data["payload"].keys() - expected_payload_keys
+            payload = data.get("payload")
+            if isinstance(payload, dict):
+                payload_missing = expected_payload_keys - payload.keys()
+                payload_unexpected = payload.keys() - expected_payload_keys
             else:
                 payload_missing = expected_payload_keys
+                payload_unexpected = set()
 
             if missing_keys or unexpected_keys or payload_missing or payload_unexpected:
                 _log.warning("Invalid metadata JSON in mod: %s", mod)
                 shutil.rmtree(temp_dir_path, ignore_errors=True)
                 return ["Invalid metadata JSON", mod]
+
+            existingmods.append(name)
+            conflicts.extend(data.get("conflicts", []))
+            moddata[temp_dir_path] = data
 
         except Exception as e:
             _log.exception("Failed to load mod %s", mod)
@@ -134,79 +188,12 @@ def load_mods(skipmods, osuplatform):
         _log.warning("Duplicate mods detected")
         return ["Duplicate mods detected", "your mods"]
 
-    for modx in existingmods:
-        if modx in conflicts:
-            _log.warning("Incompatible mods detected (conflicts)")
+    for mod_name in existingmods:
+        if mod_name in conflicts:
+            _log.warning("Incompatible mods detected")
             return ["Incompatible mods detected (mod conflicts)", "your mods"]
 
     return moddata
-
-
-def _ensure_persistent_tool(exe_src: str, tool_name: str) -> tuple[str, str]:
-    base = os.path.join(os.getenv("LOCALAPPDATA") or tempfile.gettempdir(), "M1PPLauncher", "tools", tool_name)
-    os.makedirs(base, exist_ok=True)
-
-    exe_dst = os.path.join(base, os.path.basename(exe_src))
-
-    try:
-        if (not os.path.isfile(exe_dst)) or (os.path.getsize(exe_dst) != os.path.getsize(exe_src)):
-            shutil.copy2(exe_src, exe_dst)
-    except Exception:
-        if not os.path.isfile(exe_dst):
-            shutil.copy2(exe_src, exe_dst)
-
-    return exe_dst, base
-
-
-def _is_process_running(name_lower: str) -> bool:
-    try:
-        for p in psutil.process_iter(["name"]):
-            if (p.info.get("name") or "").lower() == name_lower:
-                return True
-    except Exception:
-        pass
-    return False
-
-
-def _find_tosu_exe(mods) -> str:
-    if not isinstance(mods, dict):
-        return ""
-    for mod_path, mod in mods.items():
-        try:
-            name = str(mod.get("name") or "").lower()
-            payload = mod.get("payload") or {}
-            exe = str(payload.get("executable") or "")
-            exe_name = os.path.basename(exe).lower()
-            if name == "tosu" or exe_name == "tosu.exe":
-                return os.path.join(mod_path, exe)
-        except Exception:
-            continue
-    return ""
-
-
-def _spawn_logged_tosu(exe_path: str, run_cwd: str, startupinfo) -> None:
-    proc = subprocess.Popen(
-        [exe_path],
-        cwd=run_cwd,
-        startupinfo=startupinfo,
-        shell=False,
-        creationflags=subprocess.CREATE_NO_WINDOW,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-
-    def _log_pipe():
-        try:
-            if proc.stdout is None:
-                return
-            for line in iter(proc.stdout.readline, b""):
-                if not line:
-                    break
-                _log.info("[tosu] %s", line.decode("utf-8", errors="replace").rstrip())
-        except Exception:
-            pass
-
-    Thread(target=_log_pipe, daemon=True).start()
 
 
 def ensure_tosu_running(mods=None) -> bool:
@@ -225,22 +212,9 @@ def ensure_tosu_running(mods=None) -> bool:
     try:
         _spawn_logged_tosu(exe_path, run_cwd, startupinfo)
         return True
-
     except Exception:
         _log.exception("Failed to start tosu")
         return False
-
-
-def _kill_by_name(name_lower: str):
-    try:
-        for p in psutil.process_iter(["name"]):
-            if (p.info.get("name") or "").lower() == name_lower:
-                try:
-                    p.kill()
-                except Exception:
-                    pass
-    except Exception:
-        pass
 
 
 def inject_mods(mods, ppid):
@@ -252,9 +226,7 @@ def inject_mods(mods, ppid):
 
         exe_path = os.path.join(mod_path, mod["payload"]["executable"])
         exe_name = os.path.basename(exe_path).lower()
-
-        argss = mod["payload"]["arguments"]
-        args = [arg.replace("%pid%", str(ppid)) for arg in argss]
+        args = [arg.replace("%pid%", str(ppid)) for arg in mod["payload"]["arguments"]]
 
         if exe_name == "tosu.exe":
             _kill_by_name("tosu.exe")
@@ -263,12 +235,11 @@ def inject_mods(mods, ppid):
             try:
                 _spawn_logged_tosu(exe_path, run_cwd, startupinfo)
             except Exception:
-                _log.exception("Injector failed (tosu). exe=%s", exe_path)
+                _log.exception("Injector failed for tosu. exe=%s", exe_path)
 
             continue
 
-        startcmd = [exe_path]
-        startcmd.extend(args)
+        startcmd = [exe_path, *args]
 
         try:
             if mod.get("checkerror") is True:
@@ -281,28 +252,21 @@ def inject_mods(mods, ppid):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                 )
-                out = b""
+
                 try:
                     out = modproc.communicate(timeout=mod["processtimeout"])[0] or b""
                 except subprocess.TimeoutExpired:
-                    try:
-                        modproc.kill()
-                    except Exception:
-                        pass
+                    modproc.kill()
                     out = b""
 
-                code = modproc.returncode
-                if code != 0:
-                    _log.error("Mod injector exited non-zero. mod=%s code=%s", mod.get("name"), code)
+                if modproc.returncode != 0:
+                    _log.error("Mod injector exited non-zero. mod=%s code=%s", mod.get("name"), modproc.returncode)
                     if out:
-                        _log.error(
-                            "Mod output (%s): %s",
-                            mod.get("name"),
-                            out.decode("utf-8", errors="replace")[:2000],
-                        )
+                        _log.error("Mod output (%s): %s", mod.get("name"), out.decode("utf-8", errors="replace")[:2000])
+
                     Thread(
                         target=messageerr,
-                        args=("Exit code: " + str(code) + "\n\n" + mod["errormessage"],),
+                        args=("Exit code: " + str(modproc.returncode) + "\n\n" + mod["errormessage"],),
                         daemon=True,
                     ).start()
             else:
@@ -313,198 +277,82 @@ def inject_mods(mods, ppid):
                     creationflags=subprocess.SW_HIDE,
                     startupinfo=startupinfo,
                 )
+
         except Exception:
             _log.exception("Injector failed. mod=%s cmd=%s", mod.get("name"), startcmd)
 
 
 def launch_osu(gameserver, mods):
     configdata = util.get_configdata()
+    launch_dir = _osu_launch_dir(configdata)
 
-    if os.path.isdir(configdata["m1pppath"]) and os.path.isdir(configdata["osupath"]):
-        while True:
-            try:
-                for procx in psutil.process_iter():
-                    if procx.name() == "osu!.exe":
-                        procx.kill()
-            except Exception:
-                _log.exception("Failed killing existing osu!.exe processes")
+    if not launch_dir:
+        _log.error("Cannot launch osu!: installdata.json does not point to a valid osu!.exe")
+        return 1
 
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    _kill_by_name("osu!.exe")
 
-            subprocess.Popen(
-                [os.path.join(configdata["m1pppath"], "osu!.exe"), "-devserver", gameserver],
-                cwd=configdata["m1pppath"],
-                startupinfo=startupinfo,
-            )
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-            lastproctime = time.time()
-            injected = False
-            lastpid = 0
-            sentc = False
-            osucc = False
+    subprocess.Popen(
+        [os.path.join(launch_dir, "osu!.exe"), "-devserver", gameserver],
+        cwd=launch_dir,
+        startupinfo=startupinfo,
+    )
 
-            while True:
-                process = None
-                for p in psutil.process_iter(["pid", "name"]):
-                    if p.info["name"] and p.info["name"].lower() == "osu!.exe":
-                        lastproctime = time.time()
-                        if lastpid == 0:
-                            lastpid = p.pid
-                        process = p
-                        break
+    deadline = time.time() + 120.0
+    warned_cuttingedge = False
 
-                if process is None:
-                    gap = time.time() - lastproctime
-                    grace = 2.05 if osucc else 120.0
-                    if gap > grace:
-                        return 0
-                    time.sleep(0.1)
-                    continue
+    while time.time() < deadline:
+        process = None
 
-                try:
-                    windows = pyautogui.getAllWindows()
-                except Exception:
-                    _log.exception("pyautogui.getAllWindows() failed")
-                    windows = []
-
-                if not osucc:
-                    for window in windows:
-                        if window.title and window.title == "osu!" and window.width > 750:
-                            try:
-                                cmd = process.cmdline()
-                            except Exception:
-                                _log.exception("Failed reading osu!.exe cmdline()")
-                                cmd = []
-
-                            if gameserver not in cmd:
-                                if not any(ext in cmd for ext in [".osk", ".osr", ".osu", ".osz", ".osb"]):
-                                    try:
-                                        for proc in psutil.process_iter():
-                                            if proc.name() == "osu!.exe":
-                                                proc.kill()
-                                    except Exception:
-                                        _log.exception("Failed killing osu!.exe during relaunch")
-                                    return 9
-                            else:
-                                osucc = True
-
-                        elif window.title and "cuttingedge" in window.title and not sentc:
-                            Thread(
-                                target=messageerr,
-                                args=(
-                                    'You are currently using the "cuttingedge" channel in osu!\nPlease switch to the Stable channel in order to keep playing on M1PP',
-                                ),
-                                daemon=True,
-                            ).start()
-                            sentc = True
-
-                if not injected:
-                    found = False
-                    for window in windows:
-                        if window.title and window.title == "osu!" and window.width > 750:
-                            found = True
-                            break
-
-                    if found:
-                        Thread(target=inject_mods, args=(mods, process.pid), daemon=True).start()
-                        injected = True
-
-                time.sleep(0.03)
-
-
-def wait_to_hold():
-    lastproctime = time.time()
-    while True:
-        found = False
-        for p in psutil.process_iter(["pid", "name"]):
-            if p.info["name"] and p.info["name"].lower() == "osu!.exe":
-                lastproctime = time.time()
-                found = True
+        for proc in psutil.process_iter(["pid", "name"]):
+            if (proc.info.get("name") or "").lower() == "osu!.exe":
+                process = proc
                 break
 
-        if not found and (time.time() - lastproctime) > 1.3:
-            return 0
+        if process is None:
+            time.sleep(0.1)
+            continue
 
-        time.sleep(0.1)
-
-
-def setup_settings_lazer():
-    configdata = util.get_configdata()
-    appdata_path = os.getenv("APPDATA") or ""
-    if not appdata_path:
-        _log.error("APPDATA missing; cannot install AuthlibInjection ruleset.")
-        return False
-
-    ruleset_cache = os.path.join(configdata["m1pppath"], "ruleset.dll")
-
-    if not os.path.isfile(ruleset_cache):
-        ok = False
-        for url in RULESET_URLS:
-            try:
-                _log.info("Downloading AuthlibInjection ruleset: %s", url)
-                _download(url, ruleset_cache)
-                ok = True
-                break
-            except Exception as e:
-                _log.warning("Ruleset download failed url=%s err=%s", url, e)
-        if not ok:
-            _log.error("Failed to download AuthlibInjection ruleset.")
-            return False
-
-    rulesets_dirs = [
-        os.path.join(appdata_path, "osu", "rulesets"),
-        os.path.join(appdata_path, "osu!", "rulesets"),
-    ]
-
-    installed = False
-    for d in rulesets_dirs:
         try:
-            os.makedirs(d, exist_ok=True)
-            dst = os.path.join(d, LAZER_RULESET_FILENAME)
-            shutil.copy2(ruleset_cache, dst)
-            _log.info("Installed AuthlibInjection ruleset: %s", dst)
-            installed = True
-        except Exception as e:
-            _log.warning("Failed installing ruleset into %s: %s", d, e)
+            windows = pyautogui.getAllWindows()
+        except Exception:
+            _log.exception("pyautogui.getAllWindows() failed")
+            windows = []
 
-    if not installed:
-        _log.error("AuthlibInjection ruleset install failed; lazer will use Bancho.")
-    return installed
-def setup_osu_lazer():
-    local_path = os.path.join(os.getenv("LOCALAPPDATA") or "", "osulazer", "current", "osu!.exe")
+        for window in windows:
+            if window.title and "cuttingedge" in window.title and not warned_cuttingedge:
+                Thread(
+                    target=messageerr,
+                    args=(
+                        'You are currently using the "cuttingedge" channel in osu!\n'
+                        "Please switch to the Stable channel in order to keep playing on M1PP",
+                    ),
+                    daemon=True,
+                ).start()
+                warned_cuttingedge = True
 
-    api_host = _normalize_host("https://lazer-api.m1pposu.dev/")
-    web_host = _normalize_host("https://lazer.m1pposu.dev/")
+        found_osu_window = any(window.title == "osu!" and window.width > 750 for window in windows)
+        if not found_osu_window:
+            time.sleep(0.05)
+            continue
 
-    if not setup_settings_lazer():
-        _log.error("AuthlibInjection ruleset setup failed. Cannot route lazer to M1PP.")
-        return False
-
-    if not local_path or not os.path.isfile(local_path):
-        _log.error("osu!lazer not found at expected path: %s", local_path)
-        return False
-
-    args = [
-        local_path,
-        f"--api-url={api_host}",
-        f"--website-url={web_host}",
-        "--disable-sentry-logger",
-    ]
-
-    try:
-        _log.info("Launching osu!lazer: %s", " ".join(args))
-        proc = subprocess.Popen(args)
         try:
-            proc.wait(timeout=5)
-            if proc.returncode not in (0, None):
-                _log.warning("osu!lazer exited early code=%s", proc.returncode)
-        except subprocess.TimeoutExpired:
-            return True
+            cmd = process.cmdline()
+        except psutil.Error:
+            _log.exception("Failed reading osu!.exe cmdline")
+            cmd = []
 
-        wait_to_hold()
-        return True
+        if gameserver not in cmd:
+            opened_file = any(ext in cmd for ext in [".osk", ".osr", ".osu", ".osz", ".osb"])
+            if not opened_file:
+                _kill_by_name("osu!.exe")
+                return 9
 
-    except Exception:
-        _log.exception("setup_osu_lazer: launch failed")
-        return False
+        Thread(target=inject_mods, args=(mods, process.pid), daemon=True).start()
+        return 0
+
+    _log.warning("Timed out waiting for osu! window after launch")
+    return 0

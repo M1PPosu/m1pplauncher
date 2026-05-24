@@ -1,0 +1,230 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "osu!.patcher/1.0.0": {
+        "dependencies": {
+          "HoLLy.ManagedInjector": "1.0.0",
+          "System.Management": "7.0.1",
+          "osu!.hook": "1.0.0",
+          "osu!.hook.Reference": "1.0.0.0",
+          "osu!.performance.Reference": "1.0.0.0",
+          "osu!.stubs.Reference": "1.0.0.0",
+          "utils.Reference": "1.0.0.0"
+        },
+        "runtime": {
+          "osu!.patcher.dll": {}
+        }
+      },
+      "HoLLy.ManagedInjector/1.0.0": {
+        "dependencies": {
+          "Iced": "1.11.2"
+        },
+        "runtime": {
+          "lib/netstandard2.0/ManagedInjector.Lib.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Iced/1.11.2": {
+        "runtime": {
+          "lib/netstandard2.1/Iced.dll": {
+            "assemblyVersion": "1.11.2.0",
+            "fileVersion": "1.11.2.0"
+          }
+        }
+      },
+      "System.CodeDom/7.0.0": {
+        "runtime": {
+          "lib/net7.0/System.CodeDom.dll": {
+            "assemblyVersion": "7.0.0.0",
+            "fileVersion": "7.0.22.51805"
+          }
+        }
+      },
+      "System.Management/7.0.1": {
+        "dependencies": {
+          "System.CodeDom": "7.0.0"
+        },
+        "runtime": {
+          "lib/net7.0/System.Management.dll": {
+            "assemblyVersion": "7.0.0.1",
+            "fileVersion": "7.0.523.17405"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net7.0/System.Management.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "7.0.0.1",
+            "fileVersion": "7.0.523.17405"
+          }
+        }
+      },
+      "osu!.hook/1.0.0": {
+        "dependencies": {
+          "osu!.performance": "1.0.0",
+          "osu!.stubs": "1.0.0"
+        },
+        "runtime": {
+          "osu!.hook.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": ""
+          }
+        }
+      },
+      "osu!.performance/1.0.0": {
+        "runtime": {
+          "osu!.performance.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": ""
+          }
+        }
+      },
+      "osu!.stubs/1.0.0": {
+        "dependencies": {
+          "utils": "1.0.0"
+        },
+        "runtime": {
+          "osu!.stubs.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": ""
+          }
+        }
+      },
+      "utils/1.0.0": {
+        "runtime": {
+          "utils.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": ""
+          }
+        }
+      },
+      "osu!.hook.Reference/1.0.0.0": {
+        "runtime": {
+          "osu!.hook.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "osu!.performance.Reference/1.0.0.0": {
+        "runtime": {
+          "osu!.performance.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "osu!.stubs.Reference/1.0.0.0": {
+        "runtime": {
+          "osu!.stubs.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "utils.Reference/1.0.0.0": {
+        "runtime": {
+          "utils.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "0Harmony/2.3.1.1": {
+        "runtime": {
+          "0Harmony.dll": {
+            "assemblyVersion": "2.3.1.1",
+            "fileVersion": "2.3.1.1"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "osu!.patcher/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "HoLLy.ManagedInjector/1.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-dwvJzaNAaY5V2NHYUgHws2dHcP71kUuGpkFMDiJcc5JoaUSDYLJ3VON+6MUn2d22Rei7XyyYrR+RwHm1vD6Mmw==",
+      "path": "holly.managedinjector/1.0.0",
+      "hashPath": "holly.managedinjector.1.0.0.nupkg.sha512"
+    },
+    "Iced/1.11.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-vi3IeZNgfj43XpKfLhJ2WGiJ1vIWzijoLdzufy57VCRG/jvno5Ni+lhoE3PuzZ3AnPmUOJVx9hsqGId+SJYmNg==",
+      "path": "iced/1.11.2",
+      "hashPath": "iced.1.11.2.nupkg.sha512"
+    },
+    "System.CodeDom/7.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GLltyqEsE5/3IE+zYRP5sNa1l44qKl9v+bfdMcwg+M9qnQf47wK3H0SUR/T+3N4JEQXF3vV4CSuuo0rsg+nq2A==",
+      "path": "system.codedom/7.0.0",
+      "hashPath": "system.codedom.7.0.0.nupkg.sha512"
+    },
+    "System.Management/7.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-pHg4hGr/dn5wYdJ+kolMY4gkCIzFDRj/HFqoPq7e5h7OGii6BCBmS2/+ysC2SSoB5WvIDS29DMM5DowxxSY/oA==",
+      "path": "system.management/7.0.1",
+      "hashPath": "system.management.7.0.1.nupkg.sha512"
+    },
+    "osu!.hook/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "osu!.performance/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "osu!.stubs/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "utils/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "osu!.hook.Reference/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "osu!.performance.Reference/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "osu!.stubs.Reference/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "utils.Reference/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "0Harmony/2.3.1.1": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

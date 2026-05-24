@@ -9,8 +9,8 @@
   <h1>M1PP Launcher</h1>
 
   <p>
-    Windows launcher for <b>M1PP</b> / <b>M1Lazer</b> private osu! servers,
-    with routing for <b>osu!stable</b> and <b>osu!lazer</b>, optional mod tooling,
+    Windows launcher for <b>M1PP</b> private osu! servers,
+    with routing for <b>osu!stable</b>, optional mod tooling,
     an updater, logs, and
     Discord Rich Presence.
   </p>
@@ -52,22 +52,9 @@
 ## TL;DR
 
 - Stable routing: launches `osu!.exe -devserver <domain>`
-- Lazer routing: launches `osu!.exe --api-url=<host> --website-url=<host>`
+- M1Lazer routing is temporarily unavailable
 - Custom server routing: **osu!stable only**
-- Beatmap Discord RPC uses tosu telemetry: stable reads `/json`, lazer reads `/json/v2`
-
----
-
-## What this is (and what it isn’t)
-
-M1PP Launcher is the Windows desktop launcher for **M1PP / M1Lazer**.
-
-- It routes both **osu!stable** and **osu!lazer** to the correct server endpoints
-- It supports built-in mods and custom `.mmod` packages
-- It includes an updater, logging, and Discord Rich Presence
-
-It is **not affiliated with ppy**.  
-It is **not intended for Bancho**.
+- Beatmap Discord RPC uses tosu telemetry for osu!stable
 
 ---
 
@@ -81,12 +68,12 @@ It is **not intended for Bancho**.
   </tr>
   <tr>
     <td><b>2</b></td>
-    <td>Run the installer <b>as Administrator</b></td>
-    <td>Required for mklink + registry entries</td>
+    <td>Run the installer</td>
+    <td>Installs to your local app data folder</td>
   </tr>
   <tr>
     <td><b>3</b></td>
-    <td>Open M1PP Launcher → pick a client → <b>LAUNCH</b></td>
+    <td>Open M1PP Launcher -> <b>LAUNCH</b></td>
     <td>Routing is handled by the launcher</td>
   </tr>
 </table>
@@ -109,3 +96,5 @@ For a custom stable server, enable the **Custom Server** option in Settings and 
 
 The authoritative Windows build path is `build.bat` at the repo root.
 It builds `m1ppupdater.exe` first, bundles it into the launcher, and writes `m1pplauncher.exe` to `dist\launcher\`.
+
+## Please Note That As Of 5/24/26 Of Making This, M1Lazer Has Been Temp Closed, Thus "osu!Lazer" Is Greyed Out.

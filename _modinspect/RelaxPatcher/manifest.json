@@ -1,0 +1,18 @@
+{
+    "name": "RelaxPatcher",
+    "author": "rushiiMachine",
+    "version": "v1.1",
+    "description": "Apply several fixes to osu! make playing Relax more enjoyable.",
+    "platform": "windows",
+    "osuplatform": "stable",
+    "conflicts": [
+        "RelaxPatcherLinux"
+    ],
+    "payload": {
+        "executable": "osu!.patcher.exe",
+        "arguments": ["%pid%"]
+    },
+    "checkerror": false,
+    "errormessage": "Something went wrong. Please try downloading the .NET 8.0.15 runtime\n\nhttps://aka.ms/dotnet-core-applaunch?missing_runtime=true&arch=x64&rid=win-x64&os=win10&apphost_version=8.0.15",
+    "processtimeout": 6.5
+}

@@ -9,12 +9,13 @@ import shutil
 
 import aiohttp
 import aiofiles
-import qasync
 import psutil
 
+os.environ.setdefault("QT_API", "pyside6")
 from PySide6.QtCore import QObject, Signal, QUrl
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtQml import QQmlApplicationEngine
+import qasync
 
 import m1pp_logger
 
