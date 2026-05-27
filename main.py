@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import json
 import logging
 import os
@@ -24,7 +24,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 os.environ.setdefault("QT_API", "pyside6")
 import qasync
 
-LOCAL_VERSION = "v4b"
+LOCAL_VERSION = "v4b-hotfix1"
 DISCORD_CLIENT_ID = "1460103326560682137"
 LOCALAPPDATA = os.environ.get("LOCALAPPDATA") or ""
 

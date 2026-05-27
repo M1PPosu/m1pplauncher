@@ -104,7 +104,6 @@ class Updater(QObject):
         super().__init__()
         self.target_dir = target_dir
 
-    @qasync.asyncSlot()
     async def start(self):
         target = os.path.join(self.target_dir, "m1pplauncher.exe")
         tmp = target + ".tmp"
