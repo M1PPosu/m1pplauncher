@@ -13,9 +13,17 @@ def _read_json_file(path: str, default):
     try:
         if not os.path.isfile(path):
             return default
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
+
+        with open(path, "rb") as f:
+            raw = f.read()
+
+        try:
+            text = raw.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = raw.decode("mbcs")
+
+        return json.loads(text)
+    except (OSError, UnicodeError, json.JSONDecodeError):
         return default
 
 def _write_json_file(path: str, data: dict) -> None:
