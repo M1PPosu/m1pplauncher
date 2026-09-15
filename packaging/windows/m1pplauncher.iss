@@ -132,18 +132,19 @@ end;
 procedure WriteInstallData();
 var
   Path: string;
-  Body: string;
+  Lines: TArrayOfString;
 begin
   ForceDirectories(ExpandConstant('{app}\mods'));
 
   Path := ExpandConstant('{app}\installdata.json');
-  Body :=
-    '{' + #13#10 +
-    '  "m1pppath": ' + JsonString(ExpandConstant('{app}')) + ',' + #13#10 +
-    '  "osupath": ' + JsonString(OsuPage.Values[0]) + #13#10 +
-    '}';
 
-  SaveStringToFile(Path, Body, False);
+  SetArrayLength(Lines, 4);
+  Lines[0] := '{';
+  Lines[1] := '  "m1pppath": ' + JsonString(ExpandConstant('{app}')) + ',';
+  Lines[2] := '  "osupath": ' + JsonString(OsuPage.Values[0]);
+  Lines[3] := '}';
+
+  SaveStringsToUTF8File(Path, Lines, False);
 end;
 
 procedure RemoveOldInstallDir(OldDir: string);
