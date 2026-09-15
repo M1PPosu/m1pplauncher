@@ -62,9 +62,15 @@ def _read_json(path: str) -> dict:
     if not path or not os.path.isfile(path):
         return {}
 
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    with open(path, "rb") as f:
+        raw = f.read()
 
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("mbcs")
+
+    data = json.loads(text)
     return data if isinstance(data, dict) else {}
 
 
@@ -77,7 +83,7 @@ def _read_installdata_safe() -> dict:
     for path in paths:
         try:
             data = _read_json(path)
-        except (OSError, json.JSONDecodeError) as e:
+        except (OSError, UnicodeError, json.JSONDecodeError) as e:
             _log.warning("Failed reading installdata.json at %s: %s", path, e)
             continue
 
@@ -180,7 +186,7 @@ class MainWindow(QMainWindow):
         except requests.RequestException as e:
             _log.warning("News update error: %s", e)
             self.isonline += " (Disconnected)"
-        except (OSError, json.JSONDecodeError) as e:
+        
             _log.warning("News parse error: %s", e)
             self.isonline += " (Disconnected)"
 
